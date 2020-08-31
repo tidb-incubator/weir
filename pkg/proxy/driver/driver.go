@@ -13,6 +13,6 @@ func NewDriverImpl() *DriverImpl {
 	return &DriverImpl{}
 }
 
-func (*DriverImpl) OpenCtx(connID uint64, capability uint32, collation uint8, dbname string, tlsState *tls.ConnectionState) (server.QueryCtx, error) {
+func (*DriverImpl) OpenCtx(connID uint64, capability uint32, collation uint8, dbname string, tlsState *tls.ConnectionState) (proxy.QueryCtx, error) {
 	return NewQueryCtxImpl(), nil
 }

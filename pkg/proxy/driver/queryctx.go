@@ -79,11 +79,11 @@ func (q *QueryCtxImpl) CurrentDB() string {
 	return q.currentDB
 }
 
-func (*QueryCtxImpl) Execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
+func (*QueryCtxImpl) Execute(ctx context.Context, sql string) ([]proxy.ResultSet, error) {
 	return nil, nil
 }
 
-func (*QueryCtxImpl) ExecuteInternal(ctx context.Context, sql string) ([]server.ResultSet, error) {
+func (*QueryCtxImpl) ExecuteInternal(ctx context.Context, sql string) ([]proxy.ResultSet, error) {
 	return nil, nil
 }
 
@@ -91,15 +91,15 @@ func (*QueryCtxImpl) SetClientCapability(uint32) {
 	return
 }
 
-func (*QueryCtxImpl) Prepare(sql string) (statement server.PreparedStatement, columns, params []*server.ColumnInfo, err error) {
+func (*QueryCtxImpl) Prepare(sql string) (statement proxy.PreparedStatement, columns, params []*proxy.ColumnInfo, err error) {
 	return nil, nil, nil, fmt.Errorf("prepare is unimplemented")
 }
 
-func (*QueryCtxImpl) GetStatement(stmtID int) server.PreparedStatement {
+func (*QueryCtxImpl) GetStatement(stmtID int) proxy.PreparedStatement {
 	return nil
 }
 
-func (*QueryCtxImpl) FieldList(tableName string) (columns []*server.ColumnInfo, err error) {
+func (*QueryCtxImpl) FieldList(tableName string) (columns []*proxy.ColumnInfo, err error) {
 	return nil, nil
 }
 
