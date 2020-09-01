@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util/arena"
 )
@@ -14,8 +15,8 @@ import (
 const (
 	connStatusDispatching int32 = iota
 	connStatusReading
-	connStatusShutdown     // Closed by server.
-	connStatusWaitShutdown // Notified by server to close.
+	connStatusShutdown      // Closed by server.
+	connStatusWaitShutdown  // Notified by server to close.
 )
 
 type clientConn struct {
@@ -39,16 +40,20 @@ type clientConn struct {
 	attrs        map[string]string // attributes parsed from client handshake response, not used for now.
 
 	// SQL查询
-	ctx      QueryCtx        // an interface to execute sql statements.
-	status   int32           // dispatching/reading/shutdown/waitshutdown
-	alloc    arena.Allocator // an memory allocator for reducing memory allocation.
-	lastCode uint16          // last error code
+	ctx        QueryCtx        // an interface to execute sql statements.
+	status     int32           // dispatching/reading/shutdown/waitshutdown
+	alloc      arena.Allocator // an memory allocator for reducing memory allocation.
+	lastCode   uint16          // last error code
+	lastPacket []byte          // latest sql query string, currently used for logging error.
 }
 
 func newClientConn(s *Server) *clientConn {
 	return &clientConn{
 		server:       s,
 		connectionID: s.GetNextConnID(),
+		collation:    mysql.DefaultCollationID,
+		alloc:        arena.NewAllocator(32 * 1024),
+		status:       connStatusDispatching,
 	}
 }
 

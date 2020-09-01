@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"io"
 
 	"github.com/pingcap/parser/mysql"
 )
@@ -14,7 +15,7 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 	return cc.dispatchRequest(cmd, data)
 }
 
-// TODO: inplement this method
+// TODO: implement this function
 func (cc *clientConn) setProcessInfoInDispatch(cmd byte) {
 	switch cmd {
 	case mysql.ComPing,
@@ -27,26 +28,40 @@ func (cc *clientConn) setProcessInfoInDispatch(cmd byte) {
 	}
 }
 
+// TODO: implement this function
 func (cc *clientConn) dispatchRequest(cmd byte, data []byte) error {
 	switch cmd {
 	case mysql.ComSleep:
+		return nil
 	case mysql.ComQuit:
+		return io.EOF
 	case mysql.ComQuery:
+		return cc.writeOK()
 	case mysql.ComPing:
+		return cc.writeOK()
 	case mysql.ComInitDB:
+		return cc.writeOK()
 	case mysql.ComFieldList:
+		return cc.writeOK()
 	case mysql.ComStmtPrepare:
+		return cc.writeOK()
 	case mysql.ComStmtExecute:
+		return cc.writeOK()
 	case mysql.ComStmtFetch:
+		return cc.writeOK()
 	case mysql.ComStmtClose:
+		return cc.writeOK()
 	case mysql.ComStmtSendLongData:
+		return cc.writeOK()
 	case mysql.ComStmtReset:
+		return cc.writeOK()
 	case mysql.ComSetOption:
+		return cc.writeOK()
 	case mysql.ComChangeUser:
+		return cc.writeOK()
 	default:
+		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
 	}
-
-	panic("unimplemented")
 }
 
 func (cc *clientConn) useDB(ctx context.Context, db string) (err error) {
