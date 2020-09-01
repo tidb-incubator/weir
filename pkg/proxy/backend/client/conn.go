@@ -252,6 +252,10 @@ func (c *Conn) GetConnectionID() uint32 {
 	return c.connectionID
 }
 
+func (c *Conn) GetStatus() uint16 {
+	return c.status
+}
+
 func (c *Conn) HandleOKPacket(data []byte) *Result {
 	r, _ := c.handleOKPacket(data)
 	return r
