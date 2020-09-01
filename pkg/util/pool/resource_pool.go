@@ -27,7 +27,6 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/util/sync2"
 	"github.com/pingcap-incubator/weir/pkg/util/timer"
 	"golang.org/x/net/context"
-
 )
 
 var (
@@ -189,12 +188,6 @@ func (rp *ResourcePool) closeIdleResources() {
 // it will wait till the next resource becomes available or a timeout.
 // A timeout of 0 is an indefinite wait.
 func (rp *ResourcePool) Get(ctx context.Context) (resource Resource, err error) {
-	span, ctx := trace.NewSpan(ctx, "ResourcePool.Get")
-	span.Annotate("capacity", rp.capacity.Get())
-	span.Annotate("in_use", rp.inUse.Get())
-	span.Annotate("available", rp.available.Get())
-	span.Annotate("active", rp.active.Get())
-	defer span.Finish()
 	return rp.get(ctx)
 }
 
@@ -226,9 +219,7 @@ func (rp *ResourcePool) get(ctx context.Context) (resource Resource, err error) 
 
 	// Unwrap
 	if wrapper.resource == nil {
-		span, _ := trace.NewSpan(ctx, "ResourcePool.factory")
 		wrapper.resource, err = rp.factory(ctx)
-		span.Finish()
 		if err != nil {
 			rp.resources <- resourceWrapper{}
 			return nil, err
