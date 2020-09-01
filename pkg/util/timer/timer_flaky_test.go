@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap-incubator/weir/pkg/util/sync2"
 	"github.com/stretchr/testify/assert"
-	"vitess.io/vitess/go/sync2"
 )
 
 const (

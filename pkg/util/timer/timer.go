@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/sync2"
+	"github.com/pingcap-incubator/weir/pkg/util/sync2"
 )
 
 // Out-of-band messages
