@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pingcap/parser/mysql"
+	"github.com/pingcap/parser/terror"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util/arena"
 )
@@ -96,6 +97,8 @@ func (cc *clientConn) Run(ctx context.Context) {
 		startTime := time.Now()
 		if err = cc.dispatch(ctx, data); err != nil {
 			cc.logDispatchErrorInfo()
+			err1 := cc.writeError(err)
+			terror.Log(err1)
 		}
 
 		cc.addMetrics(data[0], startTime, err)
