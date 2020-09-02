@@ -35,6 +35,7 @@ func (cc *clientConn) setProcessInfoInDispatch(cmd byte) {
 
 // TODO: implement this function
 func (cc *clientConn) dispatchRequest(ctx context.Context, cmd byte, data []byte) error {
+	dataStr := string(hack.String(data))
 	switch cmd {
 	case mysql.ComSleep:
 		return nil
@@ -47,11 +48,15 @@ func (cc *clientConn) dispatchRequest(ctx context.Context, cmd byte, data []byte
 		// See http://dev.mysql.com/doc/internals/en/com-query.html
 		if len(data) > 0 && data[len(data)-1] == 0 {
 			data = data[:len(data)-1]
+			dataStr = string(hack.String(data))
 		}
-		return cc.handleQuery(ctx, string(hack.String(data)))
+		return cc.handleQuery(ctx, dataStr)
 	case mysql.ComPing:
 		return cc.writeOK()
 	case mysql.ComInitDB:
+		if err := cc.useDB(ctx, dataStr); err != nil {
+			return err
+		}
 		return cc.writeOK()
 	case mysql.ComFieldList:
 		return cc.writeOK()
@@ -76,13 +81,10 @@ func (cc *clientConn) dispatchRequest(ctx context.Context, cmd byte, data []byte
 	}
 }
 
+// useDB only save db name in clientConn,
+// but run "use `db`" when execute query in backend.
+// TODO(eastfisher): verify db name
 func (cc *clientConn) useDB(ctx context.Context, db string) (err error) {
-	// if input is "use `SELECT`", mysql client just send "SELECT"
-	// so we add `` around db.
-	_, err = cc.ctx.Execute(ctx, "use `"+db+"`")
-	if err != nil {
-		return err
-	}
 	cc.dbname = db
 	return
 }
