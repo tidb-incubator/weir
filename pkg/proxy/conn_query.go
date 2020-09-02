@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"io"
+	"strings"
 	"sync/atomic"
 
 	"github.com/pingcap/parser/mysql"
@@ -59,7 +60,7 @@ func (cc *clientConn) dispatchRequest(ctx context.Context, cmd byte, data []byte
 		}
 		return cc.writeOK()
 	case mysql.ComFieldList:
-		return cc.writeOK()
+		return cc.handleFieldList(dataStr)
 	case mysql.ComStmtPrepare:
 		return cc.writeOK()
 	case mysql.ComStmtExecute:
@@ -118,4 +119,32 @@ func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 		err = cc.writeOK()
 	}
 	return err
+}
+
+// handleFieldList returns the field list for a table.
+// The sql string is composed of a table name and a terminating character \x00.
+func (cc *clientConn) handleFieldList(sql string) (err error) {
+	parts := strings.Split(sql, "\x00")
+	columns, err := cc.ctx.FieldList(parts[0])
+	if err != nil {
+		return err
+	}
+	data := cc.alloc.AllocWithLen(4, 1024)
+	for _, column := range columns {
+		// Current we doesn't output defaultValue but reserve defaultValue length byte to make mariadb client happy.
+		// https://dev.mysql.com/doc/internals/en/com-query-response.html#column-definition
+		// TODO: fill the right DefaultValues.
+		column.DefaultValueLength = 0
+		column.DefaultValue = []byte{}
+
+		data = data[0:4]
+		data = column.Dump(data)
+		if err := cc.writePacket(data); err != nil {
+			return err
+		}
+	}
+	if err := cc.writeEOF(0); err != nil {
+		return err
+	}
+	return cc.flush()
 }
