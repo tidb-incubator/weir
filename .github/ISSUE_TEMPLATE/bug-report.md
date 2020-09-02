@@ -16,4 +16,4 @@ labels: 'type/bug'
 
 ### What did you see instead?
 
-### What version of PD are you using (`pd-server -V`)?
+### What version of Weir are you using (`weir-proxy -V`)?

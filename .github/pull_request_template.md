@@ -1,5 +1,5 @@
 <!--
-Thank you for working on PD! Please read PD's [CONTRIBUTING](https://github.com/tikv/pd/blob/master/CONTRIBUTING.md) document **BEFORE** filing this PR.
+Thank you for working on Weir! Please read Weir's [CONTRIBUTING](https://github.com/pingcap-incubator/weir/blob/master/CONTRIBUTING.md) document **BEFORE** filing this PR.
 PR Title Format:
 1. pkg [, pkg2, pkg3]: what's changed
 2. *: what's changed
