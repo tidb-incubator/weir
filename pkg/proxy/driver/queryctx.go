@@ -29,10 +29,11 @@ const (
 
 type QueryCtxImpl struct {
 	currentDB string
+	backend   Backend
 }
 
-func NewQueryCtxImpl() *QueryCtxImpl {
-	return &QueryCtxImpl{}
+func NewQueryCtxImpl(backend Backend) *QueryCtxImpl {
+	return &QueryCtxImpl{backend: backend}
 }
 
 func (*QueryCtxImpl) Status() uint16 {
@@ -79,8 +80,21 @@ func (q *QueryCtxImpl) CurrentDB() string {
 	return q.currentDB
 }
 
-func (*QueryCtxImpl) Execute(ctx context.Context, sql string) ([]proxy.ResultSet, error) {
-	return nil, nil
+func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]proxy.ResultSet, error) {
+	conn, err := q.backend.GetConn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	defer q.backend.PutConn(ctx, conn)
+
+	result, err := conn.Execute(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	resultSet := wrapMySQLResult(result)
+	return []proxy.ResultSet{resultSet}, nil
 }
 
 func (*QueryCtxImpl) ExecuteInternal(ctx context.Context, sql string) ([]proxy.ResultSet, error) {
