@@ -3,14 +3,20 @@ package proxy
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"net"
+	"runtime"
 	"sync/atomic"
 	"time"
 
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
+	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util/arena"
+	"github.com/pingcap/tidb/util/logutil"
+	"go.uber.org/zap"
 )
 
 const (
@@ -60,9 +66,26 @@ func newClientConn(s *Server) *clientConn {
 
 // TODO: implement this function
 func (cc *clientConn) Run(ctx context.Context) {
-	// do something before client conn exit
+	const size = 4096
 	defer func() {
-
+		r := recover()
+		if r != nil {
+			buf := make([]byte, size)
+			stackSize := runtime.Stack(buf, false)
+			buf = buf[:stackSize]
+			logutil.Logger(ctx).Error("connection running loop panic",
+				//zap.Stringer("lastSQL", getLastStmtInConn{cc}),
+				zap.String("err", fmt.Sprintf("%v", r)),
+				zap.String("stack", string(buf)),
+			)
+			err := cc.writeError(errors.New(fmt.Sprintf("%v", r)))
+			terror.Log(err)
+			metrics.PanicCounter.WithLabelValues(metrics.LabelSession).Inc()
+		}
+		if atomic.LoadInt32(&cc.status) != connStatusShutdown {
+			err := cc.Close()
+			terror.Log(err)
+		}
 	}()
 
 	// Loop handle incoming data
@@ -119,4 +142,13 @@ func (cc *clientConn) setConn(conn net.Conn) {
 // TODO: implemented this function
 func (cc *clientConn) getSessionVarsWaitTimeout(ctx context.Context) uint64 {
 	return variable.DefWaitTimeout
+}
+
+func (cc *clientConn) Close() error {
+	err := cc.bufReadConn.Close()
+	terror.Log(err)
+	if cc.ctx != nil {
+		return cc.ctx.Close()
+	}
+	return nil
 }

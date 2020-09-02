@@ -13,6 +13,7 @@ import (
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
 	"github.com/pingcap/tidb/errno"
+	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/util/fastrand"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
@@ -117,7 +118,11 @@ func (s *Server) GetNextConnID() uint32 {
 func (s *Server) onConn(clientConn *clientConn) {
 	ctx := context.Background()
 	if err := clientConn.handshake(ctx); err != nil {
-		panic(err)
+		// TODO: implement this function
+		metrics.HandShakeErrorCounter.Inc()
+		err = clientConn.Close()
+		terror.Log(errors.Trace(err))
+		return
 	}
 
 	// do something before close
