@@ -1,11 +1,13 @@
 package driver
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy"
+	"github.com/pingcap-incubator/weir/pkg/util/passwd"
 	"github.com/pingcap/parser/auth"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util"
@@ -122,8 +124,10 @@ func (*QueryCtxImpl) Close() error {
 }
 
 // TODO: implement multi tenant auth
-func (*QueryCtxImpl) Auth(user *auth.UserIdentity, auth []byte, salt []byte) bool {
-	return true
+func (*QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bool {
+	originPwdStr := []byte("world")
+	originPwd := passwd.CalculatePassword(salt, originPwdStr)
+	return bytes.Equal(originPwd, pwd)
 }
 
 func (*QueryCtxImpl) ShowProcess() *util.ProcessInfo {
