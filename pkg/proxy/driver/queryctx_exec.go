@@ -4,15 +4,101 @@ import (
 	"context"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/parser/ast"
+	"github.com/pingcap/parser/mysql"
+	gomysql "github.com/siddontang/go-mysql/mysql"
 )
 
+// TODO: implement this function
 func (q *QueryCtxImpl) doExecute(ctx context.Context, sql string) ([]server.ResultSet, error) {
-	conn, err := q.backend.GetConn(ctx)
+	stmt, err := q.parser.ParseOneStmt(sql, "", "")
 	if err != nil {
 		return nil, err
 	}
 
+	return q.dispatchStmt(ctx, sql, stmt)
+}
+
+// TODO: implement this function
+func (q *QueryCtxImpl) dispatchStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+	switch stmt := stmtNode.(type) {
+	case *ast.UseStmt:
+		err := q.useDB(ctx, stmt.DBName)
+		return nil, err
+	case *ast.ShowStmt:
+		return q.executeShowStmt(ctx, sql, stmt)
+	case *ast.SelectStmt:
+		return q.executeInBackend(ctx, sql, stmtNode)
+	default:
+		return nil, mysql.NewErrf(mysql.ErrUnknown, "stmt %T not supported now", stmtNode)
+	}
+}
+
+// TODO: implement this function
+func (q *QueryCtxImpl) executeShowStmt(ctx context.Context, sql string, stmt *ast.ShowStmt) ([]server.ResultSet, error) {
+	switch stmt.Tp {
+	case ast.ShowDatabases:
+		databases := []string{"bug_test", "db_not_allowed"}
+		result, err := createShowDatabasesResult(databases)
+		if err != nil {
+			return nil, err
+		}
+		return []server.ResultSet{wrapMySQLResult(result)}, nil
+	case ast.ShowTables:
+		return q.executeInBackend(ctx, sql, stmt)
+	default:
+		return nil, mysql.NewErrf(mysql.ErrUnknown, "show type %v not supported now", stmt.Tp)
+	}
+}
+
+func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
+	var values [][]interface{}
+	for _, db := range dbNames {
+		values = append(values, []interface{}{db})
+	}
+
+	rs, err := gomysql.BuildSimpleTextResultset([]string{"Database"}, values)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &gomysql.Result{
+		Status:    0,
+		Resultset: rs,
+	}
+
+	// copied from go-mysql client/conn.readResultRows()
+	// since convertFieldsToColumnInfos() only read result.Value,
+	// so we have to write row data back to value
+	// FIXME: remove this when weir client is finished
+	if cap(result.Values) < len(result.RowDatas) {
+		result.Values = make([][]gomysql.FieldValue, len(result.RowDatas))
+	} else {
+		result.Values = result.Values[:len(result.RowDatas)]
+	}
+
+	for i := range result.Values {
+		result.Values[i], err = result.RowDatas[i].Parse(result.Fields, false, result.Values[i])
+
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+	}
+
+	return result, nil
+}
+
+func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+	conn, err := q.backend.GetConn(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer q.backend.PutConn(ctx, conn)
+
+	if err := conn.UseDB(q.currentDB); err != nil {
+		return nil, err
+	}
 
 	result, err := conn.Execute(sql)
 	if err != nil {
@@ -21,4 +107,13 @@ func (q *QueryCtxImpl) doExecute(ctx context.Context, sql string) ([]server.Resu
 
 	resultSet := wrapMySQLResult(result)
 	return []server.ResultSet{resultSet}, nil
+}
+
+// TODO: implement this function
+func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
+	if db != "bug_test" {
+		return mysql.NewErrf(mysql.ErrDBaccessDenied, "db %s access denied", db)
+	}
+	q.currentDB = db
+	return nil
 }

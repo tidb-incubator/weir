@@ -8,6 +8,7 @@ import (
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 	"github.com/pingcap-incubator/weir/pkg/util/passwd"
+	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/auth"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util"
@@ -32,10 +33,14 @@ const (
 type QueryCtxImpl struct {
 	currentDB string
 	backend   Backend
+	parser    *parser.Parser
 }
 
 func NewQueryCtxImpl(backend Backend) *QueryCtxImpl {
-	return &QueryCtxImpl{backend: backend}
+	return &QueryCtxImpl{
+		backend: backend,
+		parser:  parser.New(),
+	}
 }
 
 func (*QueryCtxImpl) Status() uint16 {
