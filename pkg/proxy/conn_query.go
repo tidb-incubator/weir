@@ -97,8 +97,13 @@ func (cc *clientConn) dispatchRequest(ctx context.Context, cmd byte, data []byte
 
 // useDB only save db name in clientConn,
 // but run "use `db`" when execute query in backend.
-// TODO(eastfisher): verify db name
 func (cc *clientConn) useDB(ctx context.Context, db string) (err error) {
+	// if input is "use `SELECT`", mysql client just send "SELECT"
+	// so we add `` around db.
+	_, err = cc.ctx.Execute(ctx, "use `"+db+"`")
+	if err != nil {
+		return err
+	}
 	cc.dbname = db
 	return
 }
