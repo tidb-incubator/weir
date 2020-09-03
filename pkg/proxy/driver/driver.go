@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy"
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
+	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 )
 
 type Backend interface {
@@ -23,6 +23,6 @@ func NewDriverImpl(backend Backend) *DriverImpl {
 	}
 }
 
-func (d *DriverImpl) OpenCtx(connID uint64, capability uint32, collation uint8, dbname string, tlsState *tls.ConnectionState) (proxy.QueryCtx, error) {
+func (d *DriverImpl) OpenCtx(connID uint64, capability uint32, collation uint8, dbname string, tlsState *tls.ConnectionState) (server.QueryCtx, error) {
 	return NewQueryCtxImpl(d.backend), nil
 }

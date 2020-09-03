@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
-	"github.com/pingcap-incubator/weir/pkg/proxy"
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
+	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,7 +24,7 @@ func Test_ProxyServer(t *testing.T) {
 	defer backendDatabase.Close()
 
 	drv := driver.NewDriverImpl(backendDatabase)
-	s, err := proxy.NewServer(cfg, drv)
+	s, err := server.NewServer(cfg, drv)
 	assert.NoError(t, err)
 	go func() {
 		err := s.Run()
