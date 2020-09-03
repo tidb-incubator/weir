@@ -83,20 +83,7 @@ func (q *QueryCtxImpl) CurrentDB() string {
 }
 
 func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
-	conn, err := q.backend.GetConn(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	defer q.backend.PutConn(ctx, conn)
-
-	result, err := conn.Execute(sql)
-	if err != nil {
-		return nil, err
-	}
-
-	resultSet := wrapMySQLResult(result)
-	return []server.ResultSet{resultSet}, nil
+	return q.doExecute(ctx, sql)
 }
 
 func (*QueryCtxImpl) ExecuteInternal(ctx context.Context, sql string) ([]server.ResultSet, error) {
