@@ -109,7 +109,7 @@ func (cc *clientConn) useDB(ctx context.Context, db string) (err error) {
 // Query `load stats` does not return result either.
 // TODO: implement this function
 func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
-	rss, err := cc.ctx.Execute(ctx, cc.dbname, sql)
+	rss, err := cc.ctx.Execute(ctx, sql)
 	if err != nil {
 		metrics.ExecuteErrorCounter.WithLabelValues(metrics.ExecuteErrorToLabel(err)).Inc()
 		return err

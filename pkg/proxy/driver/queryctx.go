@@ -82,19 +82,13 @@ func (q *QueryCtxImpl) CurrentDB() string {
 	return q.currentDB
 }
 
-func (q *QueryCtxImpl) Execute(ctx context.Context, db string, sql string) ([]proxy.ResultSet, error) {
+func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]proxy.ResultSet, error) {
 	conn, err := q.backend.GetConn(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	defer q.backend.PutConn(ctx, conn)
-
-	if db != "" && db != q.currentDB {
-		if err := conn.UseDB(db); err != nil {
-			return nil, err
-		}
-	}
 
 	result, err := conn.Execute(sql)
 	if err != nil {

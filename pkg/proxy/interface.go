@@ -67,7 +67,7 @@ type QueryCtx interface {
 	CurrentDB() string
 
 	// Execute executes a SQL statement.
-	Execute(ctx context.Context, db string, sql string) ([]ResultSet, error)
+	Execute(ctx context.Context, sql string) ([]ResultSet, error)
 
 	// ExecuteInternal executes a internal SQL statement.
 	ExecuteInternal(ctx context.Context, sql string) ([]ResultSet, error)
