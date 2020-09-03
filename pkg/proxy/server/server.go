@@ -1,4 +1,17 @@
-package proxy
+// Copyright 2015 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package server
 
 import (
 	"context"
@@ -13,6 +26,7 @@ import (
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
 	"github.com/pingcap/tidb/errno"
+	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/util/fastrand"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
@@ -117,7 +131,11 @@ func (s *Server) GetNextConnID() uint32 {
 func (s *Server) onConn(clientConn *clientConn) {
 	ctx := context.Background()
 	if err := clientConn.handshake(ctx); err != nil {
-		panic(err)
+		// TODO: implement this function
+		metrics.HandShakeErrorCounter.Inc()
+		err = clientConn.Close()
+		terror.Log(errors.Trace(err))
+		return
 	}
 
 	// do something before close

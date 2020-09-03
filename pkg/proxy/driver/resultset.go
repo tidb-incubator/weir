@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy"
+	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 	"github.com/pingcap/tidb/types"
 	"github.com/pingcap/tidb/util/chunk"
 	"github.com/pingcap/tidb/util/hack"
@@ -14,7 +14,7 @@ import (
 
 type weirResultSet struct {
 	result      *mysql.Result
-	columnInfos []*proxy.ColumnInfo
+	columnInfos []*server.ColumnInfo
 	closed      int32
 	readed      bool
 }
@@ -28,10 +28,10 @@ func wrapMySQLResult(result *mysql.Result) *weirResultSet {
 	return resultSet
 }
 
-func convertFieldsToColumnInfos(fields []*mysql.Field) []*proxy.ColumnInfo {
-	var columnInfos []*proxy.ColumnInfo
+func convertFieldsToColumnInfos(fields []*mysql.Field) []*server.ColumnInfo {
+	var columnInfos []*server.ColumnInfo
 	for _, field := range fields {
-		columnInfo := &proxy.ColumnInfo{
+		columnInfo := &server.ColumnInfo{
 			Schema:             string(hack.String(field.Schema)),
 			Table:              string(hack.String(field.Table)),
 			OrgTable:           string(hack.String(field.OrgTable)),
@@ -81,7 +81,7 @@ func writeResultSetDataToTrunk(r *mysql.Resultset, c *chunk.Chunk) {
 	}
 }
 
-func (w *weirResultSet) Columns() []*proxy.ColumnInfo {
+func (w *weirResultSet) Columns() []*server.ColumnInfo {
 	return w.columnInfos
 }
 

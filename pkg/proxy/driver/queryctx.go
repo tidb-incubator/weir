@@ -1,11 +1,13 @@
 package driver
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy"
+	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	"github.com/pingcap-incubator/weir/pkg/util/passwd"
 	"github.com/pingcap/parser/auth"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util"
@@ -80,7 +82,7 @@ func (q *QueryCtxImpl) CurrentDB() string {
 	return q.currentDB
 }
 
-func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]proxy.ResultSet, error) {
+func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
 	conn, err := q.backend.GetConn(ctx)
 	if err != nil {
 		return nil, err
@@ -94,10 +96,10 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]proxy.ResultS
 	}
 
 	resultSet := wrapMySQLResult(result)
-	return []proxy.ResultSet{resultSet}, nil
+	return []server.ResultSet{resultSet}, nil
 }
 
-func (*QueryCtxImpl) ExecuteInternal(ctx context.Context, sql string) ([]proxy.ResultSet, error) {
+func (*QueryCtxImpl) ExecuteInternal(ctx context.Context, sql string) ([]server.ResultSet, error) {
 	return nil, nil
 }
 
@@ -105,15 +107,15 @@ func (*QueryCtxImpl) SetClientCapability(uint32) {
 	return
 }
 
-func (*QueryCtxImpl) Prepare(sql string) (statement proxy.PreparedStatement, columns, params []*proxy.ColumnInfo, err error) {
+func (*QueryCtxImpl) Prepare(sql string) (statement server.PreparedStatement, columns, params []*server.ColumnInfo, err error) {
 	return nil, nil, nil, fmt.Errorf("prepare is unimplemented")
 }
 
-func (*QueryCtxImpl) GetStatement(stmtID int) proxy.PreparedStatement {
+func (*QueryCtxImpl) GetStatement(stmtID int) server.PreparedStatement {
 	return nil
 }
 
-func (*QueryCtxImpl) FieldList(tableName string) (columns []*proxy.ColumnInfo, err error) {
+func (*QueryCtxImpl) FieldList(tableName string) (columns []*server.ColumnInfo, err error) {
 	return nil, nil
 }
 
@@ -122,8 +124,10 @@ func (*QueryCtxImpl) Close() error {
 }
 
 // TODO: implement multi tenant auth
-func (*QueryCtxImpl) Auth(user *auth.UserIdentity, auth []byte, salt []byte) bool {
-	return true
+func (*QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bool {
+	originPwdStr := []byte("world")
+	originPwd := passwd.CalculatePassword(salt, originPwdStr)
+	return bytes.Equal(originPwd, pwd)
 }
 
 func (*QueryCtxImpl) ShowProcess() *util.ProcessInfo {

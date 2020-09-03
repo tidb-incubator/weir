@@ -1,15 +1,35 @@
-package proxy
+// Copyright 2015 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package server
 
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"net"
+	"runtime"
 	"sync/atomic"
 	"time"
 
 	"github.com/pingcap/parser/mysql"
+	"github.com/pingcap/parser/terror"
+	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util/arena"
+	"github.com/pingcap/tidb/util/logutil"
+	"go.uber.org/zap"
 )
 
 const (
@@ -59,9 +79,26 @@ func newClientConn(s *Server) *clientConn {
 
 // TODO: implement this function
 func (cc *clientConn) Run(ctx context.Context) {
-	// do something before client conn exit
+	const size = 4096
 	defer func() {
-
+		r := recover()
+		if r != nil {
+			buf := make([]byte, size)
+			stackSize := runtime.Stack(buf, false)
+			buf = buf[:stackSize]
+			logutil.Logger(ctx).Error("connection running loop panic",
+				//zap.Stringer("lastSQL", getLastStmtInConn{cc}),
+				zap.String("err", fmt.Sprintf("%v", r)),
+				zap.String("stack", string(buf)),
+			)
+			err := cc.writeError(errors.New(fmt.Sprintf("%v", r)))
+			terror.Log(err)
+			metrics.PanicCounter.WithLabelValues(metrics.LabelSession).Inc()
+		}
+		if atomic.LoadInt32(&cc.status) != connStatusShutdown {
+			err := cc.Close()
+			terror.Log(err)
+		}
 	}()
 
 	// Loop handle incoming data
@@ -96,6 +133,8 @@ func (cc *clientConn) Run(ctx context.Context) {
 		startTime := time.Now()
 		if err = cc.dispatch(ctx, data); err != nil {
 			cc.logDispatchErrorInfo()
+			err1 := cc.writeError(err)
+			terror.Log(err1)
 		}
 
 		cc.addMetrics(data[0], startTime, err)
@@ -116,4 +155,13 @@ func (cc *clientConn) setConn(conn net.Conn) {
 // TODO: implemented this function
 func (cc *clientConn) getSessionVarsWaitTimeout(ctx context.Context) uint64 {
 	return variable.DefWaitTimeout
+}
+
+func (cc *clientConn) Close() error {
+	err := cc.bufReadConn.Close()
+	terror.Log(err)
+	if cc.ctx != nil {
+		return cc.ctx.Close()
+	}
+	return nil
 }
