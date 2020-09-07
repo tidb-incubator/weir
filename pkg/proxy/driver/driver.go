@@ -4,13 +4,32 @@ import (
 	"context"
 	"crypto/tls"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	"github.com/siddontang/go-mysql/mysql"
 )
 
 type Backend interface {
-	GetConn(context.Context) (*client.Conn, error)
-	PutConn(context.Context, *client.Conn) error
+	GetConn(context.Context) (BackendConn, error)
+	PutConn(context.Context, BackendConn) error
+}
+
+type BackendConn interface {
+	Close() error
+	Ping() error
+	UseDB(dbName string) error
+	GetDB() string
+	Execute(command string, args ...interface{}) (*mysql.Result, error)
+	Begin() error
+	Commit() error
+	Rollback() error
+	SetCharset(charset string) error
+	FieldList(table string, wildcard string) ([]*mysql.Field, error)
+	SetAutoCommit() error
+	IsAutoCommit() bool
+	IsInTransaction() bool
+	GetCharset() string
+	GetConnectionID() uint32
+	GetStatus() uint16
 }
 
 type DriverImpl struct {
