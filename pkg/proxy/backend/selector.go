@@ -3,10 +3,16 @@ package backend
 import (
 	"errors"
 	"math/rand"
+	"time"
+)
+
+const (
+	SelectorTypeRandom = 1 + iota
 )
 
 var (
-	ErrNoInstanceToSelect = errors.New("no instance to select")
+	ErrNoInstanceToSelect  = errors.New("no instance to select")
+	ErrInvalidSelectorType = errors.New("invalid selector type")
 )
 
 type Selector interface {
@@ -15,6 +21,17 @@ type Selector interface {
 
 type RandomSelector struct {
 	rd *rand.Rand
+}
+
+func CreateSelector(selectorType int) (Selector, error) {
+	switch selectorType {
+	case SelectorTypeRandom:
+		source := rand.NewSource(time.Now().Unix())
+		rd := rand.New(source)
+		return NewRandomSelector(rd), nil
+	default:
+		return nil, ErrInvalidSelectorType
+	}
 }
 
 func NewRandomSelector(rd *rand.Rand) *RandomSelector {
