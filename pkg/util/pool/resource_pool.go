@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package pools provides functionality to manage and reuse resources
 // like connections.
-package pools
+package pool
 
 import (
 	"errors"
