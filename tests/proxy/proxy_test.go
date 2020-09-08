@@ -13,12 +13,16 @@ import (
 
 func Test_ProxyServer(t *testing.T) {
 	cfg := &config.Config{}
-	backendCfg := &backend.Config{
-		Addr:     "127.0.0.1:3306",
-		UserName: "root",
-		Password: "123456",
+
+	backendCfg := &backend.BackendConfig{
+		Addrs:        map[string]struct{}{"127.0.0.1:3306": {}},
+		UserName:     "root",
+		Password:     "123456",
+		Capacity:     1,
+		IdleTimeout:  0,
+		SelectorType: backend.SelectorTypeRandom,
 	}
-	backendDatabase := backend.NewSingleConnDatabaseImpl(backendCfg)
+	backendDatabase := backend.NewBackendImpl(backendCfg)
 	err := backendDatabase.Init()
 	assert.NoError(t, err, "backend init error")
 	defer backendDatabase.Close()

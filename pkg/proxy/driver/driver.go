@@ -1,17 +1,10 @@
 package driver
 
 import (
-	"context"
 	"crypto/tls"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 )
-
-type Backend interface {
-	GetConn(context.Context) (*client.Conn, error)
-	PutConn(context.Context, *client.Conn) error
-}
 
 type DriverImpl struct {
 	backend Backend
