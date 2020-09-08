@@ -8,6 +8,7 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	"github.com/pingcap-incubator/weir/pkg/util/sync2"
 	"github.com/pingcap/tidb/util/logutil"
+	"go.uber.org/zap"
 )
 
 var (
@@ -141,7 +142,7 @@ func (b *BackendImpl) Close() {
 
 	for addr, connPool := range b.connPools {
 		if err := connPool.Close(); err != nil {
-			logutil.BgLogger().Error("close conn pool error, addr: %s, err: %v", addr, err)
+			logutil.BgLogger().Error("close conn pool error, addr: %s, err: %v", zap.String("addr", addr), zap.Error(err))
 		}
 	}
 }
