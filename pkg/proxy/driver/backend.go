@@ -7,8 +7,12 @@ import (
 )
 
 type Backend interface {
-	GetConn(context.Context) (BackendConn, error)
-	PutConn(context.Context, BackendConn) error
+	GetConn(context.Context) (PooledBackendConn, error)
+}
+
+type PooledBackendConn interface {
+	PutBack()
+	BackendConn
 }
 
 type BackendConn interface {

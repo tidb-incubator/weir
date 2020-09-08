@@ -94,7 +94,7 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 	if err != nil {
 		return nil, err
 	}
-	defer q.backend.PutConn(ctx, conn)
+	defer conn.PutBack()
 
 	if err := conn.UseDB(q.currentDB); err != nil {
 		return nil, err

@@ -107,7 +107,7 @@ func (b *BackendImpl) initConnPools() error {
 	return nil
 }
 
-func (b *BackendImpl) GetConn(ctx context.Context) (driver.BackendConn, error) {
+func (b *BackendImpl) GetConn(ctx context.Context) (driver.PooledBackendConn, error) {
 	if b.closed.Get() {
 		return nil, ErrBackendClosed
 	}
@@ -123,16 +123,6 @@ func (b *BackendImpl) GetConn(ctx context.Context) (driver.BackendConn, error) {
 	}
 
 	return connPool.GetConn(ctx)
-}
-
-func (b *BackendImpl) PutConn(ctx context.Context, conn driver.BackendConn) error {
-	connWrapper := conn.(*connWrapper)
-	connPool, ok := b.connPools[connWrapper.addr]
-	if !ok {
-		return ErrBackendNotFound
-	}
-
-	return connPool.PutConn(ctx, conn)
 }
 
 func (b *BackendImpl) Close() {
