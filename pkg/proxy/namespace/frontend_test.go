@@ -12,6 +12,8 @@ import (
 const (
 	duplicateUsername = "ns_user"
 	duplicatePassword = "ns_passwd"
+	testAllowedDB     = "db0"
+	testNamespace = "ns0"
 )
 
 func Test_CreateUserNamespaceMapper_Success(t *testing.T) {
@@ -47,6 +49,29 @@ func TestUserNamespaceMapper_GetUserNamespace_Success_NotFound(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func Test_CreateFrontendNamespace_Success(t *testing.T) {
+	nss := prepareNamespaces([]string{testNamespace}, false)
+	fns, err := CreateFrontendNamespace(testNamespace, &nss[0].Frontend)
+	assert.NoError(t, err)
+	assert.NotNil(t, fns)
+}
+
+func TestFrontendNamespace_Name(t *testing.T) {
+	fns := prepareFrontendNamespace(testNamespace)
+	assert.Equal(t, testNamespace, fns.Name())
+}
+
+func TestFrontendNamespace_IsDatabaseAllowed(t *testing.T) {
+	fns := prepareFrontendNamespace(testNamespace)
+	assert.True(t, fns.IsDatabaseAllowed(testAllowedDB))
+	assert.False(t, fns.IsDatabaseAllowed("unknown"))
+}
+
+func TestFrontendNamespace_ListAllowedDatabases(t *testing.T) {
+	fns := prepareFrontendNamespace(testNamespace)
+	assert.Equal(t, []string{testAllowedDB}, fns.ListAllowedDatabases())
+}
+
 func prepareNamespaces(names []string, withDuplicatedUser bool) []*config.Namespace {
 	var ret []*config.Namespace
 	for _, name := range names {
@@ -57,12 +82,19 @@ func prepareNamespaces(names []string, withDuplicatedUser bool) []*config.Namesp
 		ns := &config.Namespace{
 			Namespace: name,
 			Frontend: config.FrontendNamespace{
-				Users: userInfos,
+				AllowedDBs: []string{testAllowedDB},
+				Users:      userInfos,
 			},
 		}
 		ret = append(ret, ns)
 	}
 	return ret
+}
+
+func prepareFrontendNamespace(name string) *FrontendNamespace {
+	nss := prepareNamespaces([]string{name}, false)
+	fns, _ := CreateFrontendNamespace(name, &nss[0].Frontend)
+	return fns
 }
 
 func getTestNamespaceUserInfo(name string, count int) []config.FrontendUserInfo {
