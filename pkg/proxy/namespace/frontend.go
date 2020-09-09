@@ -2,7 +2,6 @@ package namespace
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/util/datastructure"
@@ -15,7 +14,6 @@ var (
 
 type UserNamespaceMapper struct {
 	mapper map[string]string // key: user+passwd, value: namespace
-	lock   sync.RWMutex
 }
 
 type FrontendNamespace struct {
@@ -54,9 +52,7 @@ func CreateFrontendNamespace(namespace string, cfg *config.FrontendNamespace) (*
 
 func (m *UserNamespaceMapper) GetUserNamespace(username, password string) (string, bool) {
 	key := getUserInfoKey(username, password)
-	m.lock.RLock()
 	ns, ok := m.mapper[key]
-	m.lock.RUnlock()
 	return ns, ok
 }
 
