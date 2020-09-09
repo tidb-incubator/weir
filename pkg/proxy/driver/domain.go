@@ -13,6 +13,7 @@ type NamespaceManager interface {
 }
 
 type Backend interface {
+	GetConn(context.Context) (BackendConn, error)
 	GetPooledConn(context.Context) (PooledBackendConn, error)
 	Close()
 }
