@@ -77,13 +77,6 @@ func (c *ConnPool) GetConn(ctx context.Context) (driver.PooledBackendConn, error
 	return rs.(*noErrorCloseConnWrapper).backendPooledConnWrapper, nil
 }
 
-func (c *ConnPool) PutConn(ctx context.Context, conn driver.BackendConn) error {
-	w := &noErrorCloseConnWrapper{conn.(*backendPooledConnWrapper)}
-	// FIXME: put into a full pool may cause panic!
-	c.pool.Put(w)
-	return nil
-}
-
 func (c *ConnPool) Close() error {
 	c.pool.Close()
 	return nil
