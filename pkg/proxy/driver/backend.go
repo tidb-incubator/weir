@@ -8,6 +8,7 @@ import (
 
 type Backend interface {
 	GetConn(context.Context) (PooledBackendConn, error)
+	Close()
 }
 
 type PooledBackendConn interface {
