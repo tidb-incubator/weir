@@ -7,9 +7,13 @@ import (
 )
 
 type NamespaceManager interface {
-	GetNamespace(username string) (string, bool)
-	GetBackend(namespace string) (Backend, bool)
-	GetFrontend(namespace string) (Frontend, bool)
+	Auth(username string, pwd, salt []byte) (Namespace, bool)
+}
+
+type Namespace interface {
+	Frontend() Frontend
+	Backend() Backend
+	Closed() bool
 }
 
 type Backend interface {
@@ -19,6 +23,7 @@ type Backend interface {
 }
 
 type Frontend interface {
+	Auth(username string, pwd, salt []byte) bool
 	IsDatabaseAllowed(db string) bool
 }
 
