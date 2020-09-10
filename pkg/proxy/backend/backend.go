@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	"github.com/pingcap-incubator/weir/pkg/util/sync2"
 	"github.com/pingcap/tidb/util/logutil"
@@ -117,22 +118,26 @@ func (b *BackendImpl) GetConn(ctx context.Context) (driver.BackendConn, error) {
 		return nil, err
 	}
 
+	conn, err := client.Connect(instance.Addr(), b.cfg.UserName, b.cfg.Password, "")
+	return conn, err
+}
+
+func (b *BackendImpl) GetPooledConn(ctx context.Context) (driver.PooledBackendConn, error) {
+	if b.closed.Get() {
+		return nil, ErrBackendClosed
+	}
+
+	instance, err := b.route(b.instances)
+	if err != nil {
+		return nil, err
+	}
+
 	connPool, ok := b.connPools[instance.Addr()]
 	if !ok {
 		return nil, ErrBackendNotFound
 	}
 
 	return connPool.GetConn(ctx)
-}
-
-func (b *BackendImpl) PutConn(ctx context.Context, conn driver.BackendConn) error {
-	connWrapper := conn.(*connWrapper)
-	connPool, ok := b.connPools[connWrapper.addr]
-	if !ok {
-		return ErrBackendNotFound
-	}
-
-	return connPool.PutConn(ctx, conn)
 }
 
 func (b *BackendImpl) Close() {

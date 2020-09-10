@@ -90,11 +90,11 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 }
 
 func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
-	conn, err := q.backend.GetConn(ctx)
+	conn, err := q.backend.GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer q.backend.PutConn(ctx, conn)
+	defer conn.PutBack()
 
 	if err := conn.UseDB(q.currentDB); err != nil {
 		return nil, err

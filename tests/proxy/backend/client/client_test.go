@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 	"github.com/siddontang/go-mysql/test_util/test_keys"
@@ -22,7 +23,7 @@ var testHost = flag.String("host", "127.0.0.1", "MySQL server host")
 // Hint: use docker-compose to start corresponding MySQL docker containers and add the their ports here
 var testPort = flag.String("port", "3306", "MySQL server port") // choose one or more form 5561,5641,3306,5722,8003,8012,8013, e.g. '3306,5722,8003'
 var testUser = flag.String("user", "root", "MySQL user")
-var testPassword = flag.String("pass", "", "MySQL password")
+var testPassword = flag.String("pass", "123456", "MySQL password")
 var testDB = flag.String("db", "test", "MySQL test database")
 
 func Test(t *testing.T) {
@@ -34,14 +35,14 @@ func Test(t *testing.T) {
 }
 
 type clientTestSuite struct {
-	c    *Conn
+	c    *client.Conn
 	port string
 }
 
 func (s *clientTestSuite) SetUpSuite(c *C) {
 	var err error
 	addr := fmt.Sprintf("%s:%s", *testHost, s.port)
-	s.c, err = Connect(addr, *testUser, *testPassword, "")
+	s.c, err = client.Connect(addr, *testUser, *testPassword, "")
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -101,7 +102,7 @@ func (s *clientTestSuite) TestConn_TLS_Verify(c *C) {
 	// Verify that the provided tls.Config is used when attempting to connect to mysql.
 	// An empty tls.Config will result in a connection error.
 	addr := fmt.Sprintf("%s:%s", *testHost, s.port)
-	_, err := Connect(addr, *testUser, *testPassword, *testDB, func(c *Conn) {
+	_, err := client.Connect(addr, *testUser, *testPassword, *testDB, func(c *client.Conn) {
 		c.UseSSL(false)
 	})
 	if err == nil {
@@ -117,7 +118,7 @@ func (s *clientTestSuite) TestConn_TLS_Verify(c *C) {
 func (s *clientTestSuite) TestConn_TLS_Skip_Verify(c *C) {
 	// An empty tls.Config will result in a connection error but we can configure to skip it.
 	addr := fmt.Sprintf("%s:%s", *testHost, s.port)
-	_, err := Connect(addr, *testUser, *testPassword, *testDB, func(c *Conn) {
+	_, err := client.Connect(addr, *testUser, *testPassword, *testDB, func(c *client.Conn) {
 		c.UseSSL(true)
 	})
 	c.Assert(err, Equals, nil)
@@ -127,9 +128,9 @@ func (s *clientTestSuite) TestConn_TLS_Certificate(c *C) {
 	// This test uses the TLS suite in 'go-mysql/docker/resources'. The certificates are not valid for any names.
 	// And if server uses auto-generated certificates, it will be an error like:
 	// "x509: certificate is valid for MySQL_Server_8.0.12_Auto_Generated_Server_Certificate, not not-a-valid-name"
-	tlsConfig := NewClientTLSConfig(test_keys.CaPem, test_keys.CertPem, test_keys.KeyPem, false, "not-a-valid-name")
+	tlsConfig := client.NewClientTLSConfig(test_keys.CaPem, test_keys.CertPem, test_keys.KeyPem, false, "not-a-valid-name")
 	addr := fmt.Sprintf("%s:%s", *testHost, s.port)
-	_, err := Connect(addr, *testUser, *testPassword, *testDB, func(c *Conn) {
+	_, err := client.Connect(addr, *testUser, *testPassword, *testDB, func(c *client.Conn) {
 		c.SetTLSConfig(tlsConfig)
 	})
 	if err == nil {
