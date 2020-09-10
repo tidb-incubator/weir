@@ -1,13 +1,11 @@
 package driver
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
-	"github.com/pingcap-incubator/weir/pkg/util/passwd"
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/auth"
 	"github.com/pingcap/tidb/sessionctx/variable"
@@ -31,15 +29,16 @@ const (
 )
 
 type QueryCtxImpl struct {
+	nsmgr     NamespaceManager
+	ns        Namespace
 	currentDB string
-	backend   Backend
 	parser    *parser.Parser
 }
 
-func NewQueryCtxImpl(backend Backend) *QueryCtxImpl {
+func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
 	return &QueryCtxImpl{
-		backend: backend,
-		parser:  parser.New(),
+		nsmgr:  nsmgr,
+		parser: parser.New(),
 	}
 }
 
@@ -115,11 +114,13 @@ func (*QueryCtxImpl) Close() error {
 	return nil
 }
 
-// TODO: implement multi tenant auth
-func (*QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bool {
-	originPwdStr := []byte("world")
-	originPwd := passwd.CalculatePassword(salt, originPwdStr)
-	return bytes.Equal(originPwd, pwd)
+func (q *QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bool {
+	ns, ok := q.nsmgr.Auth(user.Username, pwd, salt)
+	if !ok {
+		return false
+	}
+	q.ns = ns
+	return true
 }
 
 func (*QueryCtxImpl) ShowProcess() *util.ProcessInfo {
