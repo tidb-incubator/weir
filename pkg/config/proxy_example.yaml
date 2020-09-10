@@ -21,3 +21,14 @@ log:
     max_days: 1
     # Maximum number of old log files to retain. No clean up by default.
     max_backups: 1
+registry:
+  enable: false
+  type: "etcd"
+  addrs:
+    - "192.168.0.1:2379"
+    - "192.168.0.2:2379"
+    - "192.168.0.3:2379"
+config_center:
+  type: "file"
+  config_file:
+    path: "./etc"

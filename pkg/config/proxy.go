@@ -1,10 +1,12 @@
 package config
 
 type Proxy struct {
-	Version     string      `yaml:"version"`
-	ProxyServer ProxyServer `yaml:"proxy_server"`
-	AdminServer AdminServer `yaml:"admin_server"`
-	Log         Log         `yaml:"log"`
+	Version      string       `yaml:"version"`
+	ProxyServer  ProxyServer  `yaml:"proxy_server"`
+	AdminServer  AdminServer  `yaml:"admin_server"`
+	Log          Log          `yaml:"log"`
+	Registry     Registry     `yaml:"registry"`
+	ConfigCenter ConfigCenter `yaml:"config_center"`
 }
 
 type ProxyServer struct {
@@ -29,4 +31,19 @@ type LogFile struct {
 	MaxSize    int    `yaml:"max_size"`
 	MaxDays    int    `yaml:"max_days"`
 	MaxBackups int    `yaml:"max_backups"`
+}
+
+type Registry struct {
+	Enable bool     `yaml:"enable"`
+	Type   string   `yaml:"type"`
+	Addrs  []string `yaml:"addrs"`
+}
+
+type ConfigCenter struct {
+	Type       string     `yaml:"type"`
+	ConfigFile ConfigFile `yaml:"config_file"`
+}
+
+type ConfigFile struct {
+	Path string `yaml:"path"`
 }
