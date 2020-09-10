@@ -100,8 +100,8 @@ func createFrontends(cfgs []*config.Namespace, buildFrontend FrontendBuilder) (*
 	return NewToggleMapWrapperWithoutCloseFunc(frontendValues), nil
 }
 
-func (n *NamespaceManagerImpl) GetNamespace(username, password string) (string, bool) {
-	return n.users.Current().(*UserNamespaceMapper).GetUserNamespace(username, password)
+func (n *NamespaceManagerImpl) GetNamespace(username string) (string, bool) {
+	return n.users.Current().(*UserNamespaceMapper).GetUserNamespace(username)
 }
 
 func (n *NamespaceManagerImpl) GetFrontend(namespace string) (driver.Frontend, bool) {

@@ -7,7 +7,7 @@ import (
 )
 
 type NamespaceManager interface {
-	GetNamespace(username, password string) (string, bool)
+	GetNamespace(username string) (string, bool)
 	GetBackend(namespace string) (Backend, bool)
 	GetFrontend(namespace string) (Frontend, bool)
 }
