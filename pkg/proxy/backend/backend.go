@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
@@ -32,7 +33,9 @@ type BackendImpl struct {
 	connPools map[string]*ConnPool // key: addr
 	instances []*Instance
 	selector  Selector
-	closed    sync2.AtomicBool
+
+	lock   sync.RWMutex
+	closed sync2.AtomicBool
 }
 
 func NewBackendImpl(cfg *BackendConfig) *BackendImpl {
@@ -43,6 +46,9 @@ func NewBackendImpl(cfg *BackendConfig) *BackendImpl {
 }
 
 func (b *BackendImpl) Init() error {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
 	if err := b.initSelector(); err != nil {
 		return err
 	}
@@ -132,7 +138,9 @@ func (b *BackendImpl) GetPooledConn(ctx context.Context) (driver.PooledBackendCo
 		return nil, err
 	}
 
+	b.lock.RLock()
 	connPool, ok := b.connPools[instance.Addr()]
+	b.lock.RUnlock()
 	if !ok {
 		return nil, ErrBackendNotFound
 	}
@@ -144,6 +152,9 @@ func (b *BackendImpl) Close() {
 	if !b.closed.CompareAndSwap(false, true) {
 		return
 	}
+
+	b.lock.Lock()
+	defer b.lock.Unlock()
 
 	for addr, connPool := range b.connPools {
 		if err := connPool.Close(); err != nil {
