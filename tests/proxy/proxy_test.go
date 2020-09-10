@@ -11,6 +11,44 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type dummyNamespaceManager struct {
+	ns *dummyNamespace
+}
+type dummyNamespace struct {
+	fe driver.Frontend
+	be driver.Backend
+}
+
+func newDummyNamespaceManager(ns *dummyNamespace) *dummyNamespaceManager {
+	return &dummyNamespaceManager{ns: ns}
+}
+
+func newDummyNamespace(fe driver.Frontend, be driver.Backend) *dummyNamespace {
+	return &dummyNamespace{
+		fe: fe,
+		be: be,
+	}
+}
+
+func (d *dummyNamespace) Frontend() driver.Frontend {
+	return d.fe
+}
+
+func (d *dummyNamespace) Backend() driver.Backend {
+	return d.be
+}
+
+func (*dummyNamespace) Closed() bool {
+	return false
+}
+
+func (m *dummyNamespaceManager) Auth(username string, pwd, salt []byte) (driver.Namespace, bool) {
+	if username != "hello" {
+		return nil, false
+	}
+	return m.ns, true
+}
+
 func Test_ProxyServer(t *testing.T) {
 	cfg := &config.Config{}
 
@@ -27,7 +65,8 @@ func Test_ProxyServer(t *testing.T) {
 	assert.NoError(t, err, "backend init error")
 	defer backendDatabase.Close()
 
-	drv := driver.NewDriverImpl(backendDatabase)
+	nsmgr := newDummyNamespaceManager(newDummyNamespace(nil, backendDatabase))
+	drv := driver.NewDriverImpl(nsmgr)
 	s, err := server.NewServer(cfg, drv)
 	assert.NoError(t, err)
 	go func() {

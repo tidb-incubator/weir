@@ -26,7 +26,7 @@ func TestConnPool_OneConn_GetAndPut_Success(t *testing.T) {
 	ctx := context.Background()
 	conn, err := connPool.GetConn(ctx)
 	assert.NoError(t, err)
-	defer connPool.PutConn(ctx, conn)
+	defer conn.PutBack()
 	err = conn.Ping()
 	assert.NoError(t, err)
 }
@@ -41,7 +41,7 @@ func TestConnPool_OneConn_Concurrent_Get_Error(t *testing.T) {
 	ctx := context.Background()
 	conn, err := connPool.GetConn(ctx)
 	assert.NoError(t, err)
-	defer connPool.PutConn(ctx, conn)
+	defer conn.PutBack()
 
 	err = conn.Ping()
 	assert.NoError(t, err)
@@ -63,13 +63,13 @@ func TestConnPool_TwoConn_GetAndPut_Success(t *testing.T) {
 	ctx := context.Background()
 	conn, err := connPool.GetConn(ctx)
 	assert.NoError(t, err)
-	defer connPool.PutConn(ctx, conn)
+	defer conn.PutBack()
 	err = conn.Ping()
 	assert.NoError(t, err)
 
 	conn2, err := connPool.GetConn(ctx)
 	assert.NoError(t, err)
-	defer connPool.PutConn(ctx, conn2)
+	defer conn.PutBack()
 	err = conn2.Ping()
 	assert.NoError(t, err)
 }

@@ -20,6 +20,11 @@ type NamespaceManagerImpl struct {
 	users *sync2.Toggle
 }
 
+type NamespaceImpl struct {
+	nsmgr *NamespaceManagerImpl
+	name  string
+}
+
 type FrontendBuilder func(cfg *config.FrontendNamespace) (driver.Frontend, error)
 type BackendBuilder func(cfg *config.BackendNamespace) (driver.Backend, error)
 
@@ -50,6 +55,13 @@ func CreateNamespaceManagerImpl(
 		users:         users,
 	}
 	return ns, nil
+}
+
+func NewNamespaceImpl(nsmgr *NamespaceManagerImpl, ns string) *NamespaceImpl {
+	return &NamespaceImpl{
+		nsmgr: nsmgr,
+		name:  ns,
+	}
 }
 
 func createUsers(cfgs []*config.Namespace) (*sync2.Toggle, error) {
@@ -86,6 +98,23 @@ func createBackends(cfgs []*config.Namespace, buildBackend BackendBuilder,
 	return NewToggleMapWrapper(backendValues, delay, closeBackend), nil
 }
 
+func (n *NamespaceManagerImpl) Auth(username string, pwd, salt []byte) (driver.Namespace, bool) {
+	ns, ok := n.getNamespace(username)
+	if !ok {
+		return nil, false
+	}
+
+	fe, ok := n.frontends.Get(ns)
+	if !ok {
+		return nil, false
+	}
+	if ok := fe.(driver.Frontend).Auth(username, pwd, salt); !ok {
+		return nil, false
+	}
+
+	return NewNamespaceImpl(n, ns), true
+}
+
 func createFrontends(cfgs []*config.Namespace, buildFrontend FrontendBuilder) (*ToggleMapWrapper, error) {
 	frontendValues := make(map[string]interface{})
 
@@ -100,11 +129,11 @@ func createFrontends(cfgs []*config.Namespace, buildFrontend FrontendBuilder) (*
 	return NewToggleMapWrapperWithoutCloseFunc(frontendValues), nil
 }
 
-func (n *NamespaceManagerImpl) GetNamespace(username, password string) (string, bool) {
-	return n.users.Current().(*UserNamespaceMapper).GetUserNamespace(username, password)
+func (n *NamespaceManagerImpl) getNamespace(username string) (string, bool) {
+	return n.users.Current().(*UserNamespaceMapper).GetUserNamespace(username)
 }
 
-func (n *NamespaceManagerImpl) GetFrontend(namespace string) (driver.Frontend, bool) {
+func (n *NamespaceManagerImpl) getFrontend(namespace string) (driver.Frontend, bool) {
 	i, ok := n.frontends.Get(namespace)
 	if !ok {
 		return nil, false
@@ -112,7 +141,7 @@ func (n *NamespaceManagerImpl) GetFrontend(namespace string) (driver.Frontend, b
 	return i.(driver.Frontend), true
 }
 
-func (n *NamespaceManagerImpl) GetBackend(namespace string) (driver.Backend, bool) {
+func (n *NamespaceManagerImpl) getBackend(namespace string) (driver.Backend, bool) {
 	i, ok := n.backends.Get(namespace)
 	if !ok {
 		return nil, false
@@ -238,4 +267,19 @@ func (n *NamespaceManagerImpl) RemoveNamespace(name string) error {
 		return errors.New(errStr)
 	}
 	return nil
+}
+
+func (n *NamespaceImpl) Frontend() driver.Frontend {
+	fe, _ := n.nsmgr.getFrontend(n.name)
+	return fe
+}
+
+func (n *NamespaceImpl) Backend() driver.Backend {
+	be, _ := n.nsmgr.getBackend(n.name)
+	return be
+}
+
+func (n *NamespaceImpl) Closed() bool {
+	_, ok := n.nsmgr.frontends.Get(n.name)
+	return !ok
 }
