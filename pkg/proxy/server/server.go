@@ -96,7 +96,7 @@ func (s *Server) initCapability() {
 
 // TODO: implement this function
 func (s *Server) initListener() error {
-	listener, err := net.Listen("tcp", "0.0.0.0:6000")
+	listener, err := net.Listen("tcp", s.cfg.ProxyServer.Addr)
 	if err != nil {
 		return err
 	}

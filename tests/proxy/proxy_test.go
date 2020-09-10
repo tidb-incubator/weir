@@ -50,7 +50,11 @@ func (m *dummyNamespaceManager) Auth(username string, pwd, salt []byte) (driver.
 }
 
 func Test_ProxyServer(t *testing.T) {
-	cfg := &config.Proxy{}
+	cfg := &config.Proxy{
+		ProxyServer: config.ProxyServer{
+			Addr: "0.0.0.0:7000",
+		},
+	}
 
 	backendCfg := &backend.BackendConfig{
 		Addrs:        map[string]struct{}{"127.0.0.1:3306": {}},
