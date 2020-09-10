@@ -2,7 +2,6 @@ package config
 
 type Namespace struct {
 	Version   string            `yaml:"version"`
-	Cluster   string            `yaml:"cluster"`
 	Namespace string            `yaml:"namespace"`
 	Frontend  FrontendNamespace `yaml:"frontend"`
 	Backend   BackendNamespace  `yaml:"backend"`
