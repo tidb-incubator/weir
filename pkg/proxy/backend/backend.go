@@ -3,8 +3,10 @@ package backend
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
+	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	"github.com/pingcap-incubator/weir/pkg/util/sync2"
 	"github.com/pingcap/tidb/util/logutil"
@@ -31,7 +33,9 @@ type BackendImpl struct {
 	connPools map[string]*ConnPool // key: addr
 	instances []*Instance
 	selector  Selector
-	closed    sync2.AtomicBool
+
+	lock   sync.RWMutex
+	closed sync2.AtomicBool
 }
 
 func NewBackendImpl(cfg *BackendConfig) *BackendImpl {
@@ -42,6 +46,9 @@ func NewBackendImpl(cfg *BackendConfig) *BackendImpl {
 }
 
 func (b *BackendImpl) Init() error {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
 	if err := b.initSelector(); err != nil {
 		return err
 	}
@@ -117,7 +124,23 @@ func (b *BackendImpl) GetConn(ctx context.Context) (driver.BackendConn, error) {
 		return nil, err
 	}
 
+	conn, err := client.Connect(instance.Addr(), b.cfg.UserName, b.cfg.Password, "")
+	return conn, err
+}
+
+func (b *BackendImpl) GetPooledConn(ctx context.Context) (driver.PooledBackendConn, error) {
+	if b.closed.Get() {
+		return nil, ErrBackendClosed
+	}
+
+	instance, err := b.route(b.instances)
+	if err != nil {
+		return nil, err
+	}
+
+	b.lock.RLock()
 	connPool, ok := b.connPools[instance.Addr()]
+	b.lock.RUnlock()
 	if !ok {
 		return nil, ErrBackendNotFound
 	}
@@ -125,20 +148,13 @@ func (b *BackendImpl) GetConn(ctx context.Context) (driver.BackendConn, error) {
 	return connPool.GetConn(ctx)
 }
 
-func (b *BackendImpl) PutConn(ctx context.Context, conn driver.BackendConn) error {
-	connWrapper := conn.(*connWrapper)
-	connPool, ok := b.connPools[connWrapper.addr]
-	if !ok {
-		return ErrBackendNotFound
-	}
-
-	return connPool.PutConn(ctx, conn)
-}
-
 func (b *BackendImpl) Close() {
 	if !b.closed.CompareAndSwap(false, true) {
 		return
 	}
+
+	b.lock.Lock()
+	defer b.lock.Unlock()
 
 	for addr, connPool := range b.connPools {
 		if err := connPool.Close(); err != nil {

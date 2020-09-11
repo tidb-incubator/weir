@@ -17,20 +17,27 @@ type ConnPoolConfig struct {
 	IdleTimeout time.Duration
 }
 
+type Config struct {
+	Addr     string
+	UserName string
+	Password string
+}
+
 type ConnPool struct {
 	cfg  *ConnPoolConfig
 	pool *pool.ResourcePool
 }
 
-type connWrapper struct {
+type backendPooledConnWrapper struct {
 	*client.Conn
 	addr     string
 	username string
+	pool     *pool.ResourcePool
 }
 
 // this struct is only used for fitting pool.Resource interface
 type noErrorCloseConnWrapper struct {
-	*connWrapper
+	*backendPooledConnWrapper
 }
 
 func NewConnPool(cfg *ConnPoolConfig) *ConnPool {
@@ -39,11 +46,12 @@ func NewConnPool(cfg *ConnPoolConfig) *ConnPool {
 	}
 }
 
-func newConnWrapper(conn *client.Conn, addr, username string) *connWrapper {
-	return &connWrapper{
+func newConnWrapper(pool *pool.ResourcePool, conn *client.Conn, addr, username string) *backendPooledConnWrapper {
+	return &backendPooledConnWrapper{
 		Conn:     conn,
 		addr:     addr,
 		username: username,
+		pool:     pool,
 	}
 }
 
@@ -54,26 +62,19 @@ func (c *ConnPool) Init() error {
 		if err != nil {
 			return nil, err
 		}
-		return &noErrorCloseConnWrapper{newConnWrapper(conn, c.cfg.Addr, c.cfg.UserName)}, nil
+		return &noErrorCloseConnWrapper{newConnWrapper(c.pool, conn, c.cfg.Addr, c.cfg.UserName)}, nil
 	}
 
 	c.pool = pool.NewResourcePool(connFactory, c.cfg.Capacity, c.cfg.Capacity, c.cfg.IdleTimeout, 0, nil)
 	return nil
 }
 
-func (c *ConnPool) GetConn(ctx context.Context) (driver.BackendConn, error) {
+func (c *ConnPool) GetConn(ctx context.Context) (driver.PooledBackendConn, error) {
 	rs, err := c.pool.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return rs.(*noErrorCloseConnWrapper).connWrapper, nil
-}
-
-func (c *ConnPool) PutConn(ctx context.Context, conn driver.BackendConn) error {
-	w := &noErrorCloseConnWrapper{conn.(*connWrapper)}
-	// FIXME: put into a full pool may cause panic!
-	c.pool.Put(w)
-	return nil
+	return rs.(*noErrorCloseConnWrapper).backendPooledConnWrapper, nil
 }
 
 func (c *ConnPool) Close() error {
@@ -81,12 +82,17 @@ func (c *ConnPool) Close() error {
 	return nil
 }
 
-func (cw *connWrapper) Close() error {
+func (cw *backendPooledConnWrapper) PutBack() {
+	w := &noErrorCloseConnWrapper{cw}
+	cw.pool.Put(w)
+}
+
+func (cw *backendPooledConnWrapper) Close() error {
 	return cw.Conn.Close()
 }
 
 func (cw *noErrorCloseConnWrapper) Close() {
-	if err := cw.connWrapper.Close(); err != nil {
+	if err := cw.backendPooledConnWrapper.Close(); err != nil {
 		// TODO: log namespace info
 		logutil.BgLogger().Error("close backend conn error", zap.String("addr", cw.addr),
 			zap.String("username", cw.username), zap.Error(err))

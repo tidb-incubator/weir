@@ -1,0 +1,22 @@
+version: "v1"
+proxy_server:
+  addr: "0.0.0.0:6000"
+admin_server:
+  addr: "0.0.0.0:6001"
+  enable_basic_auth: false
+  user: "hello"
+  password: "world"
+log:
+  level: "debug"
+  format: "console"
+  log_file:
+    filename: ""
+    max_size: 300
+    max_days: 1
+    max_backups: 1
+registry:
+  enable: false
+config_center:
+  type: "file"
+  config_file:
+    path: "./etc"

@@ -6,9 +6,31 @@ import (
 	"github.com/siddontang/go-mysql/mysql"
 )
 
+type NamespaceManager interface {
+	Auth(username string, pwd, salt []byte) (Namespace, bool)
+}
+
+type Namespace interface {
+	Frontend() Frontend
+	Backend() Backend
+	Closed() bool
+}
+
 type Backend interface {
 	GetConn(context.Context) (BackendConn, error)
-	PutConn(context.Context, BackendConn) error
+	GetPooledConn(context.Context) (PooledBackendConn, error)
+	Close()
+}
+
+type Frontend interface {
+	Auth(username string, pwd, salt []byte) bool
+	IsDatabaseAllowed(db string) bool
+	ListDatabases() []string
+}
+
+type PooledBackendConn interface {
+	PutBack()
+	BackendConn
 }
 
 type BackendConn interface {

@@ -10,6 +10,20 @@ const (
 	SelectorTypeRandom = 1 + iota
 )
 
+const (
+	SelectorNameUnknown = "unknown"
+	SelectorNameRandom  = "random"
+)
+
+var (
+	selectorTypeMap = map[int]string{
+		SelectorTypeRandom: SelectorNameRandom,
+	}
+	selectorNameMap = map[string]int{
+		SelectorNameRandom: SelectorTypeRandom,
+	}
+)
+
 var (
 	ErrNoInstanceToSelect  = errors.New("no instance to select")
 	ErrInvalidSelectorType = errors.New("invalid selector type")
@@ -47,4 +61,14 @@ func (s *RandomSelector) Select(instances []*Instance) (*Instance, error) {
 	}
 	idx := s.rd.Int63n(int64(length))
 	return instances[idx], nil
+}
+
+func SelectorNameToType(name string) (int, bool) {
+	t, ok := selectorNameMap[name]
+	return t, ok
+}
+
+func SelectorTypeToName(t int) (string, bool) {
+	n, ok := selectorTypeMap[t]
+	return n, ok
 }

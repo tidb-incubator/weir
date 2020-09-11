@@ -1,42 +1,39 @@
 package proxy
 
 import (
+	"io/ioutil"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
-	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
-	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
-	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	"github.com/pingcap-incubator/weir/pkg/proxy"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_ProxyServer(t *testing.T) {
-	cfg := &config.Config{}
-
-	backendCfg := &backend.BackendConfig{
-		Addrs:        map[string]struct{}{"127.0.0.1:3306": {}},
-		UserName:     "root",
-		Password:     "123456",
-		Capacity:     1,
-		IdleTimeout:  0,
-		SelectorType: backend.SelectorTypeRandom,
-	}
-	backendDatabase := backend.NewBackendImpl(backendCfg)
-	err := backendDatabase.Init()
-	assert.NoError(t, err, "backend init error")
-	defer backendDatabase.Close()
-
-	drv := driver.NewDriverImpl(backendDatabase)
-	s, err := server.NewServer(cfg, drv)
+func Test_CreateProxyFromConfig(t *testing.T) {
+	_, localFile, _, _ := runtime.Caller(0)
+	currDir := filepath.Dir(localFile)
+	proxyConfigFileName := filepath.Join(currDir, "proxy.yaml")
+	proxyConfigData, err := ioutil.ReadFile(proxyConfigFileName)
 	assert.NoError(t, err)
+
+	proxyCfg, err := config.UnmarshalProxyConfig(proxyConfigData)
+	assert.NoError(t, err)
+
+	p := proxy.NewProxy(proxyCfg)
+
+	err = p.Init()
+	assert.NoError(t, err)
+
 	go func() {
-		err := s.Run()
-		if err != nil {
-			t.Logf("server run error: %v", err)
+		if err := p.Run(); err != nil {
+			t.Errorf("proxy run error: %v", err)
+			t.FailNow()
 		}
 	}()
 
-	defer s.Close()
 	time.Sleep(1 * time.Second)
+	p.Close()
 }

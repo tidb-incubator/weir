@@ -52,7 +52,7 @@ const defaultCapability = mysql.ClientLongPassword | mysql.ClientLongFlag |
 
 type Server struct {
 	listener   net.Listener
-	cfg        *config.Config
+	cfg        *config.Proxy
 	baseConnID uint32
 	capability uint32
 	tlsConfig  unsafe.Pointer // *tls.Config
@@ -61,7 +61,7 @@ type Server struct {
 
 // NewServer creates a new Server.
 // TODO: implement this function
-func NewServer(cfg *config.Config, driver IDriver) (*Server, error) {
+func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 	// TODO: handle the unset fields
 	s := &Server{
 		cfg:    cfg,
@@ -96,7 +96,7 @@ func (s *Server) initCapability() {
 
 // TODO: implement this function
 func (s *Server) initListener() error {
-	listener, err := net.Listen("tcp", "0.0.0.0:6000")
+	listener, err := net.Listen("tcp", s.cfg.ProxyServer.Addr)
 	if err != nil {
 		return err
 	}

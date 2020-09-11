@@ -39,7 +39,7 @@ func (q *QueryCtxImpl) dispatchStmt(ctx context.Context, sql string, stmtNode as
 func (q *QueryCtxImpl) executeShowStmt(ctx context.Context, sql string, stmt *ast.ShowStmt) ([]server.ResultSet, error) {
 	switch stmt.Tp {
 	case ast.ShowDatabases:
-		databases := []string{"bug_test", "db_not_allowed"}
+		databases := q.ns.Frontend().ListDatabases()
 		result, err := createShowDatabasesResult(databases)
 		if err != nil {
 			return nil, err
@@ -90,11 +90,11 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 }
 
 func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
-	conn, err := q.backend.GetConn(ctx)
+	conn, err := q.ns.Backend().GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer q.backend.PutConn(ctx, conn)
+	defer conn.PutBack()
 
 	if err := conn.UseDB(q.currentDB); err != nil {
 		return nil, err

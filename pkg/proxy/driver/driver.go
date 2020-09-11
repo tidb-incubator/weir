@@ -7,15 +7,15 @@ import (
 )
 
 type DriverImpl struct {
-	backend Backend
+	nsmgr NamespaceManager
 }
 
-func NewDriverImpl(backend Backend) *DriverImpl {
+func NewDriverImpl(nsmgr NamespaceManager) *DriverImpl {
 	return &DriverImpl{
-		backend: backend,
+		nsmgr: nsmgr,
 	}
 }
 
 func (d *DriverImpl) OpenCtx(connID uint64, capability uint32, collation uint8, dbname string, tlsState *tls.ConnectionState) (server.QueryCtx, error) {
-	return NewQueryCtxImpl(d.backend), nil
+	return NewQueryCtxImpl(d.nsmgr), nil
 }
