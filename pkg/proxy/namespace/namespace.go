@@ -89,7 +89,7 @@ func createBackends(cfgs []*config.Namespace, buildBackend BackendBuilder,
 	for _, cfg := range cfgs {
 		b, err2 := buildBackend(&cfg.Backend)
 		if err2 != nil {
-			err = fmt.Errorf("namespace: %v, err: %v", cfg.Namespace, err)
+			err = fmt.Errorf("namespace: %v, err: %v", cfg.Namespace, err2)
 			return nil, err
 		}
 		backendValues[cfg.Namespace] = b
@@ -282,4 +282,8 @@ func (n *NamespaceImpl) Backend() driver.Backend {
 func (n *NamespaceImpl) Closed() bool {
 	_, ok := n.nsmgr.frontends.Get(n.name)
 	return !ok
+}
+
+func DefaultCloseBackendFunc(b interface{}) {
+	b.(driver.Backend).Close()
 }

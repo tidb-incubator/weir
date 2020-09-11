@@ -43,7 +43,7 @@ func (n *FrontendNamespace) IsDatabaseAllowed(db string) bool {
 	return ok
 }
 
-func (n *FrontendNamespace) ListAllowedDatabases() []string {
+func (n *FrontendNamespace) ListDatabases() []string {
 	ret := make([]string, len(n.allowedDBs))
 	copy(ret, n.allowedDBs)
 	return ret
