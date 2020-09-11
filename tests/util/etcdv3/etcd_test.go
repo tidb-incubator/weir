@@ -2,10 +2,11 @@ package etcdv3
 
 import (
 	"context"
-	. "github.com/pingcap-incubator/weir/pkg/util/etcdv3"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	. "github.com/pingcap-incubator/weir/pkg/util/etcdv3"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
