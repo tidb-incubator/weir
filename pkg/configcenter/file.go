@@ -3,6 +3,7 @@ package configcenter
 import (
 	"io/ioutil"
 	"path"
+	"path/filepath"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap/errors"
@@ -60,8 +61,9 @@ func listAllYamlFiles(dir string) ([]string, error) {
 
 	var ret []string
 	for _, info := range infos {
-		if path.Ext(info.Name()) == ".yaml" {
-			ret = append(ret, info.Name())
+		fileName := info.Name()
+		if path.Ext(fileName) == ".yaml" {
+			ret = append(ret, filepath.Join(dir, fileName))
 		}
 	}
 
