@@ -43,16 +43,11 @@ func CreateEtcdClient(clusterAddr []string) (*EtcdClient, error) {
 }
 
 func (m *EtcdClient) Get(ctx context.Context, key string) (string, error) {
-	r, err := m.KV.Get(ctx, key, clientv3.WithPrefix())
-	fmt.Println(r, err)
-
+	r, err := m.GetNode(ctx, key)
 	if err != nil {
 		return "", err
 	}
-	if r.Count == 0 {
-		return "", fmt.Errorf("not find value, key: %s", key)
-	}
-	return string(r.Kvs[0].Value), nil
+	return string(r.Value), nil
 }
 
 func (m *EtcdClient) GetNode(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
