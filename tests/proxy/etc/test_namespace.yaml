@@ -2,11 +2,11 @@ version: "v1"
 namespace: "test_namespace"
 frontend:
   allowed_dbs:
-  - "testdb0"
-  - "testdb1"
+  - "test_db_0"
+  - "test_db_1"
   slow_sql_time: 50
   denied_sqls:
-  - "SELECT * FROM tb1"
+  - "SELECT * FROM test_tb_1"
   denied_ips:
   - "10.10.0.1"
   idle_timeout: 3600
@@ -17,9 +17,7 @@ frontend:
     password: "world1"
 backend:
   instances:
-  - "127.0.0.1:4000"
-  - "127.0.0.1:4001"
-  - "127.0.0.1:4002"
+  - "127.0.0.1:3306"
   username: "root"
   password: "123456"
   selector_type: "random"
