@@ -39,7 +39,7 @@ func (q *QueryCtxImpl) dispatchStmt(ctx context.Context, sql string, stmtNode as
 func (q *QueryCtxImpl) executeShowStmt(ctx context.Context, sql string, stmt *ast.ShowStmt) ([]server.ResultSet, error) {
 	switch stmt.Tp {
 	case ast.ShowDatabases:
-		databases := []string{"bug_test", "db_not_allowed"}
+		databases := q.ns.Frontend().ListDatabases()
 		result, err := createShowDatabasesResult(databases)
 		if err != nil {
 			return nil, err
