@@ -13,7 +13,6 @@ func Test_CreateFileConfigCenter(t *testing.T) {
 	nsName := "test_namespace"
 	_, localFile, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(localFile)
-	t.Log(dir)
 	c, err := configcenter.CreateFileConfigCenter(dir)
 	assert.NoError(t, err)
 
@@ -27,5 +26,5 @@ func Test_CreateFileConfigCenter(t *testing.T) {
 	assert.Equal(t, nsName, ret.Namespace)
 
 	_, err = c.GetNamespace("unknown")
-	assert.EqualError(t, configcenter.ErrNamespaceNotFound, err.Error())
+	assert.EqualError(t, err, configcenter.ErrNamespaceNotFound.Error())
 }
