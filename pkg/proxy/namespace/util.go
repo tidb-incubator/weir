@@ -35,7 +35,7 @@ func (t *ToggleMapWrapper) Get(name string) (interface{}, bool) {
 	t.RLock()
 	v, ok := t.m[name]
 	t.RUnlock()
-	return v, ok
+	return v.Current(), ok
 }
 
 func (t *ToggleMapWrapper) ReloadPrepare(name string, value interface{}) error {

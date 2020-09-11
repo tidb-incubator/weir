@@ -25,6 +25,7 @@ type Backend interface {
 type Frontend interface {
 	Auth(username string, pwd, salt []byte) bool
 	IsDatabaseAllowed(db string) bool
+	ListDatabases() []string
 }
 
 type PooledBackendConn interface {

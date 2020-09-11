@@ -28,6 +28,13 @@ func BuildFrontend(cfg *config.FrontendNamespace) (driver.Frontend, error) {
 		allowedDBs: cfg.AllowedDBs,
 	}
 	fns.allowedDBSet = datastructure.StringSliceToSet(cfg.AllowedDBs)
+
+	userPasswds := make(map[string]string)
+	for _, u := range cfg.Users {
+		userPasswds[u.Username] = u.Password
+	}
+	fns.userPasswd = userPasswds
+
 	return fns, nil
 }
 
@@ -36,7 +43,14 @@ func parseBackendConfig(cfg *config.BackendNamespace) (*backend.BackendConfig, e
 	if !valid {
 		return nil, ErrInvalidSelectorType
 	}
+
+	addrs := make(map[string]struct{})
+	for _, ins := range cfg.Instances {
+		addrs[ins] = struct{}{}
+	}
+
 	bcfg := &backend.BackendConfig{
+		Addrs:        addrs,
 		UserName:     cfg.Username,
 		Password:     cfg.Password,
 		Capacity:     cfg.PoolSize,
