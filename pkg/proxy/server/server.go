@@ -61,7 +61,7 @@ type Server struct {
 
 // NewServer creates a new Server.
 func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
-	// TODO: handle the unset fields
+	// TODO(eastfisher): handle the unset fields
 	s := &Server{
 		cfg:    cfg,
 		driver: driver,
