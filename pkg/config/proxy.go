@@ -7,6 +7,7 @@ type Proxy struct {
 	Log          Log          `yaml:"log"`
 	Registry     Registry     `yaml:"registry"`
 	ConfigCenter ConfigCenter `yaml:"config_center"`
+	Performance  Performance  `yaml:"performance"`
 }
 
 type ProxyServer struct {
@@ -46,4 +47,8 @@ type ConfigCenter struct {
 
 type ConfigFile struct {
 	Path string `yaml:"path"`
+}
+
+type Performance struct {
+	TCPKeepAlive bool `yaml:"tcp-keep-alive"`
 }
