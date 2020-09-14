@@ -1,13 +1,14 @@
 package config
 
 type Proxy struct {
-	Version      string       `yaml:"version"`
-	ProxyServer  ProxyServer  `yaml:"proxy_server"`
-	AdminServer  AdminServer  `yaml:"admin_server"`
-	Log          Log          `yaml:"log"`
-	Registry     Registry     `yaml:"registry"`
-	ConfigCenter ConfigCenter `yaml:"config_center"`
-	Performance  Performance  `yaml:"performance"`
+	Version              string       `yaml:"version"`
+	ProxyServer          ProxyServer  `yaml:"proxy_server"`
+	AdminServer          AdminServer  `yaml:"admin_server"`
+	Log                  Log          `yaml:"log"`
+	Registry             Registry     `yaml:"registry"`
+	ConfigCenter         ConfigCenter `yaml:"config_center"`
+	Performance          Performance  `yaml:"performance"`
+	MaxServerConnections uint32       `yaml:"max-server-connections"`
 }
 
 type ProxyServer struct {

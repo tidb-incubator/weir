@@ -64,7 +64,6 @@ type Server struct {
 
 // NewServer creates a new Server.
 func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
-	// TODO(eastfisher): handle the unset fields
 	s := &Server{
 		cfg:     cfg,
 		driver:  driver,
@@ -175,8 +174,21 @@ func (s *Server) newConn(conn net.Conn) *clientConn {
 	return cc
 }
 
-// TODO: implement this function
 func (s *Server) checkConnectionCount() error {
+	// When the value of MaxServerConnections is 0, the number of connections is unlimited.
+	if int(s.cfg.MaxServerConnections) == 0 {
+		return nil
+	}
+
+	s.rwlock.RLock()
+	conns := len(s.clients)
+	s.rwlock.RUnlock()
+
+	if conns >= int(s.cfg.MaxServerConnections) {
+		logutil.BgLogger().Error("too many connections",
+			zap.Uint32("max connections", s.cfg.MaxServerConnections), zap.Error(errConCount))
+		return errConCount
+	}
 	return nil
 }
 
