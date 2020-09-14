@@ -17,6 +17,7 @@ import (
 	"context"
 	"math/rand"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
@@ -51,22 +52,23 @@ const defaultCapability = mysql.ClientLongPassword | mysql.ClientLongFlag |
 	mysql.ClientConnectAtts | mysql.ClientPluginAuth | mysql.ClientInteractive
 
 type Server struct {
-	listener   net.Listener
 	cfg        *config.Proxy
-	baseConnID uint32
-	capability uint32
 	tlsConfig  unsafe.Pointer // *tls.Config
 	driver     IDriver
+	listener   net.Listener
+	rwlock     sync.RWMutex
+	clients    map[uint32]*clientConn
+	baseConnID uint32
+	capability uint32
 }
 
 // NewServer creates a new Server.
 func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 	// TODO(eastfisher): handle the unset fields
 	s := &Server{
-		cfg:    cfg,
-		driver: driver,
-		//concurrentLimiter: NewTokenLimiter(cfg.TokenLimit),
-		//clients:           make(map[uint32]*clientConn),
+		cfg:     cfg,
+		driver:  driver,
+		clients: make(map[uint32]*clientConn),
 	}
 
 	// TODO(eastfisher): set tlsConfig
@@ -150,7 +152,11 @@ func (s *Server) onConn(conn *clientConn) {
 		logutil.Logger(ctx).Info("connection closed")
 	}()
 
-	// TODO(eastfisher): record ConnGauge
+	s.rwlock.Lock()
+	s.clients[conn.connectionID] = conn
+	connections := len(s.clients)
+	s.rwlock.Unlock()
+	metrics.ConnGauge.Set(float64(connections))
 
 	conn.Run(ctx)
 }

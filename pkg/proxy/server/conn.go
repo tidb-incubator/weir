@@ -217,6 +217,15 @@ func (cc *clientConn) SessionStatusToString() string {
 }
 
 func (cc *clientConn) Close() error {
+	cc.server.rwlock.Lock()
+	delete(cc.server.clients, cc.connectionID)
+	connections := len(cc.server.clients)
+	cc.server.rwlock.Unlock()
+	return closeConn(cc, connections)
+}
+
+func closeConn(cc *clientConn, connections int) error {
+	metrics.ConnGauge.Set(float64(connections))
 	err := cc.bufReadConn.Close()
 	terror.Log(err)
 	if cc.ctx != nil {
