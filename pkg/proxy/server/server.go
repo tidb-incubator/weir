@@ -130,6 +130,14 @@ func (s *Server) Run() error {
 	}
 }
 
+// ConnectionCount gets current connection count.
+func (s *Server) ConnectionCount() int {
+	s.rwlock.RLock()
+	cnt := len(s.clients)
+	s.rwlock.RUnlock()
+	return cnt
+}
+
 func (s *Server) GetNextConnID() uint32 {
 	return atomic.AddUint32(&s.baseConnID, 1)
 }
@@ -204,5 +212,89 @@ func (s *Server) Close() {
 		err := s.listener.Close()
 		terror.Log(errors.Trace(err))
 		s.listener = nil
+	}
+}
+
+func killConn(conn *clientConn) {
+	sessVars := conn.ctx.GetSessionVars()
+	atomic.StoreUint32(&sessVars.Killed, 1)
+}
+
+// KillAllConnections kills all connections when server is not gracefully shutdown.
+func (s *Server) KillAllConnections() {
+	logutil.BgLogger().Info("[server] kill all connections.")
+
+	s.rwlock.RLock()
+	defer s.rwlock.RUnlock()
+	for _, conn := range s.clients {
+		atomic.StoreInt32(&conn.status, connStatusShutdown)
+		if err := conn.closeWithoutLock(); err != nil {
+			terror.Log(err)
+		}
+		killConn(conn)
+	}
+}
+
+var gracefulCloseConnectionsTimeout = 15 * time.Second
+
+// TryGracefulDown will try to gracefully close all connection first with timeout. if timeout, will close all connection directly.
+func (s *Server) TryGracefulDown() {
+	ctx, cancel := context.WithTimeout(context.Background(), gracefulCloseConnectionsTimeout)
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		s.GracefulDown(ctx, done)
+	}()
+	select {
+	case <-ctx.Done():
+		s.KillAllConnections()
+	case <-done:
+		return
+	}
+}
+
+// GracefulDown waits all clients to close.
+func (s *Server) GracefulDown(ctx context.Context, done chan struct{}) {
+	logutil.Logger(ctx).Info("[server] graceful shutdown.")
+	metrics.ServerEventCounter.WithLabelValues(metrics.EventGracefulDown).Inc()
+
+	count := s.ConnectionCount()
+	for i := 0; count > 0; i++ {
+		s.kickIdleConnection()
+
+		count = s.ConnectionCount()
+		if count == 0 {
+			break
+		}
+		// Print information for every 30s.
+		if i%30 == 0 {
+			logutil.Logger(ctx).Info("graceful shutdown...", zap.Int("conn count", count))
+		}
+		ticker := time.After(time.Second)
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker:
+		}
+	}
+	close(done)
+}
+
+func (s *Server) kickIdleConnection() {
+	var conns []*clientConn
+	s.rwlock.RLock()
+	for _, cc := range s.clients {
+		if cc.ShutdownOrNotify() {
+			// Shutdowned conn will be closed by us, and notified conn will exist themselves.
+			conns = append(conns, cc)
+		}
+	}
+	s.rwlock.RUnlock()
+
+	for _, cc := range conns {
+		err := cc.Close()
+		if err != nil {
+			logutil.BgLogger().Error("close connection", zap.Error(err))
+		}
 	}
 }

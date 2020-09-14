@@ -234,6 +234,27 @@ func closeConn(cc *clientConn, connections int) error {
 	return nil
 }
 
+func (cc *clientConn) closeWithoutLock() error {
+	delete(cc.server.clients, cc.connectionID)
+	return closeConn(cc, len(cc.server.clients))
+}
+
+// ShutdownOrNotify will Shutdown this client connection, or do its best to notify.
+func (cc *clientConn) ShutdownOrNotify() bool {
+	if (cc.ctx.Status() & mysql.ServerStatusInTrans) > 0 {
+		return false
+	}
+	// If the client connection status is reading, it's safe to shutdown it.
+	if atomic.CompareAndSwapInt32(&cc.status, connStatusReading, connStatusShutdown) {
+		return true
+	}
+	// If the client connection status is dispatching, we can't shutdown it immediately,
+	// so set the status to WaitShutdown as a notification, the client will detect it
+	// and then exit.
+	atomic.StoreInt32(&cc.status, connStatusWaitShutdown)
+	return false
+}
+
 func (cc *clientConn) String() string {
 	collationStr := mysql.Collations[cc.collation]
 	return fmt.Sprintf("id:%d, addr:%s status:%b, collation:%s, user:%s",
