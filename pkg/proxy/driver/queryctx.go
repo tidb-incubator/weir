@@ -29,16 +29,18 @@ const (
 )
 
 type QueryCtxImpl struct {
-	nsmgr     NamespaceManager
-	ns        Namespace
-	currentDB string
-	parser    *parser.Parser
+	nsmgr       NamespaceManager
+	ns          Namespace
+	currentDB   string
+	parser      *parser.Parser
+	sessionVars *variable.SessionVars
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
 	return &QueryCtxImpl{
-		nsmgr:  nsmgr,
-		parser: parser.New(),
+		nsmgr:       nsmgr,
+		parser:      parser.New(),
+		sessionVars: variable.NewSessionVars(),
 	}
 }
 
@@ -127,8 +129,8 @@ func (*QueryCtxImpl) ShowProcess() *util.ProcessInfo {
 	return nil
 }
 
-func (*QueryCtxImpl) GetSessionVars() *variable.SessionVars {
-	return nil
+func (q *QueryCtxImpl) GetSessionVars() *variable.SessionVars {
+	return q.sessionVars
 }
 
 func (*QueryCtxImpl) SetCommandValue(command byte) {
