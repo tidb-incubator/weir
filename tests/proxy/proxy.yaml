@@ -1,6 +1,7 @@
 version: "v1"
 proxy_server:
   addr: "0.0.0.0:6000"
+  max_connections: 1
 admin_server:
   addr: "0.0.0.0:6001"
   enable_basic_auth: false
@@ -20,3 +21,5 @@ config_center:
   type: "file"
   config_file:
     path: "./etc"
+performance:
+  tcp_keep_alive: true

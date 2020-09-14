@@ -1,18 +1,18 @@
 package config
 
 type Proxy struct {
-	Version              string       `yaml:"version"`
-	ProxyServer          ProxyServer  `yaml:"proxy_server"`
-	AdminServer          AdminServer  `yaml:"admin_server"`
-	Log                  Log          `yaml:"log"`
-	Registry             Registry     `yaml:"registry"`
-	ConfigCenter         ConfigCenter `yaml:"config_center"`
-	Performance          Performance  `yaml:"performance"`
-	MaxServerConnections uint32       `yaml:"max-server-connections"`
+	Version      string       `yaml:"version"`
+	ProxyServer  ProxyServer  `yaml:"proxy_server"`
+	AdminServer  AdminServer  `yaml:"admin_server"`
+	Log          Log          `yaml:"log"`
+	Registry     Registry     `yaml:"registry"`
+	ConfigCenter ConfigCenter `yaml:"config_center"`
+	Performance  Performance  `yaml:"performance"`
 }
 
 type ProxyServer struct {
-	Addr string `yaml:"addr"`
+	Addr           string `yaml:"addr"`
+	MaxConnections uint32 `yaml:"max_connections"`
 }
 
 type AdminServer struct {
@@ -51,5 +51,5 @@ type ConfigFile struct {
 }
 
 type Performance struct {
-	TCPKeepAlive bool `yaml:"tcp-keep-alive"`
+	TCPKeepAlive bool `yaml:"tcp_keep_alive"`
 }

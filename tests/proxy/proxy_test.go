@@ -34,6 +34,6 @@ func Test_CreateProxyFromConfig(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(1 * time.Second)
 	p.Close()
 }

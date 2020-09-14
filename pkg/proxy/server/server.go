@@ -183,8 +183,8 @@ func (s *Server) newConn(conn net.Conn) *clientConn {
 }
 
 func (s *Server) checkConnectionCount() error {
-	// When the value of MaxServerConnections is 0, the number of connections is unlimited.
-	if int(s.cfg.MaxServerConnections) == 0 {
+	// When the value of MaxConnections is 0, the number of connections is unlimited.
+	if int(s.cfg.ProxyServer.MaxConnections) == 0 {
 		return nil
 	}
 
@@ -192,9 +192,9 @@ func (s *Server) checkConnectionCount() error {
 	conns := len(s.clients)
 	s.rwlock.RUnlock()
 
-	if conns >= int(s.cfg.MaxServerConnections) {
+	if conns >= int(s.cfg.ProxyServer.MaxConnections) {
 		logutil.BgLogger().Error("too many connections",
-			zap.Uint32("max connections", s.cfg.MaxServerConnections), zap.Error(errConCount))
+			zap.Uint32("max connections", s.cfg.ProxyServer.MaxConnections), zap.Error(errConCount))
 		return errConCount
 	}
 	return nil
