@@ -104,8 +104,11 @@ func (s *Server) initListener() error {
 	return nil
 }
 
-// TODO: implement this function
 func (s *Server) Run() error {
+	metrics.ServerEventCounter.WithLabelValues(metrics.EventStart).Inc()
+
+	// TODO(eastfisher): startStatusHTTP()
+
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
@@ -114,6 +117,9 @@ func (s *Server) Run() error {
 					return nil
 				}
 			}
+
+			// TODO(eastfisher): support PROXY protocol
+
 			logutil.BgLogger().Error("accept failed", zap.Error(err))
 			return errors.Trace(err)
 		}
