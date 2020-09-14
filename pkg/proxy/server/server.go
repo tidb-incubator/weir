@@ -124,7 +124,7 @@ func (s *Server) Run() error {
 			return errors.Trace(err)
 		}
 
-		clientConn := s.newClientConn(conn)
+		clientConn := s.newConn(conn)
 		go s.onConn(clientConn)
 	}
 }
@@ -155,8 +155,15 @@ func (s *Server) onConn(conn *clientConn) {
 	conn.Run(ctx)
 }
 
-func (s *Server) newClientConn(conn net.Conn) *clientConn {
+func (s *Server) newConn(conn net.Conn) *clientConn {
 	cc := newClientConn(s)
+	if s.cfg.Performance.TCPKeepAlive {
+		if tcpConn, ok := conn.(*net.TCPConn); ok {
+			if err := tcpConn.SetKeepAlive(true); err != nil {
+				logutil.BgLogger().Error("failed to set tcp keep alive option", zap.Error(err))
+			}
+		}
+	}
 	cc.setConn(conn)
 	cc.salt = fastrand.Buf(20)
 	return cc
