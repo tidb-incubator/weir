@@ -87,6 +87,8 @@ func (cc *clientConn) Run(ctx context.Context) {
 			stackSize := runtime.Stack(buf, false)
 			buf = buf[:stackSize]
 			logutil.Logger(ctx).Error("connection running loop panic",
+				zap.Uint8("lastCmdType", cc.lastPacket[0]),
+				zap.ByteString("lastData", cc.lastPacket[1:]),
 				//zap.Stringer("lastSQL", getLastStmtInConn{cc}),
 				zap.String("err", fmt.Sprintf("%v", r)),
 				zap.String("stack", string(buf)),
@@ -114,7 +116,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 		}
 
 		cc.alloc.Reset()
-
+		// close connection when idle time is more than wait_timeout
 		waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
 		cc.pkt.setReadTimeout(time.Duration(waitTimeout) * time.Second)
 
@@ -152,7 +154,7 @@ func (cc *clientConn) setConn(conn net.Conn) {
 	}
 }
 
-// TODO: implemented this function
+// TODO(eastfisher): implemented this function
 func (cc *clientConn) getSessionVarsWaitTimeout(ctx context.Context) uint64 {
 	return variable.DefWaitTimeout
 }
