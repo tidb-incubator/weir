@@ -138,10 +138,6 @@ func (s *Server) ConnectionCount() int {
 	return cnt
 }
 
-func (s *Server) GetNextConnID() uint32 {
-	return atomic.AddUint32(&s.baseConnID, 1)
-}
-
 func (s *Server) onConn(conn *clientConn) {
 	ctx := logutil.WithConnID(context.Background(), conn.connectionID)
 	if err := conn.handshake(ctx); err != nil {
