@@ -1,11 +1,14 @@
 version: "v1"
 proxy_server:
   addr: "0.0.0.0:6000"
+  max_connections: 1
 admin_server:
   addr: "0.0.0.0:6001"
   enable_basic_auth: false
   user: "hello"
   password: "world"
+performance:
+  tcp_keep_alive: true
 log:
   # Log level: debug, info, warn, error, fatal.
   level: "debug"

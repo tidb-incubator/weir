@@ -14,43 +14,90 @@
 package server
 
 import (
-	"context"
-	"io"
-	"net"
-	"strings"
-	"time"
+	"encoding/binary"
+	"fmt"
+	"strconv"
 
 	"github.com/pingcap/errors"
-	"github.com/pingcap/parser/terror"
-	"github.com/pingcap/tidb/util/logutil"
-	"go.uber.org/zap"
+	"github.com/pingcap/parser"
+	"github.com/pingcap/parser/mysql"
+	"github.com/pingcap/tidb/kv"
+	"github.com/pingcap/tidb/util/hack"
 )
 
-func logReadPacketErrorInfo(ctx context.Context, err error, start time.Time, waitTimeout uint64) {
-	if terror.ErrorNotEqual(err, io.EOF) {
-		if netErr, isNetErr := errors.Cause(err).(net.Error); isNetErr && netErr.Timeout() {
-			idleTime := time.Since(start)
-			logutil.Logger(ctx).Info("read packet timeout, close this connection",
-				zap.Duration("idle", idleTime),
-				zap.Uint64("waitTimeout", waitTimeout),
-				zap.Error(err),
-			)
-		} else {
-			errStack := errors.ErrorStack(err)
-			if !strings.Contains(errStack, "use of closed network connection") {
-				logutil.Logger(ctx).Warn("read packet failed, close this connection",
-					zap.Error(errors.SuspendStack(err)))
-			}
+var _ fmt.Stringer = getLastStmtInConn{}
+
+type getLastStmtInConn struct {
+	*clientConn
+}
+
+func (cc getLastStmtInConn) String() string {
+	if len(cc.lastPacket) == 0 {
+		return ""
+	}
+	cmd, data := cc.lastPacket[0], cc.lastPacket[1:]
+	switch cmd {
+	case mysql.ComInitDB:
+		return "Use " + string(data)
+	case mysql.ComFieldList:
+		return "ListFields " + string(data)
+	case mysql.ComQuery, mysql.ComStmtPrepare:
+		sql := string(hack.String(data))
+		if cc.ctx.GetSessionVars().EnableLogDesensitization {
+			sql, _ = parser.NormalizeDigest(sql)
 		}
+		return queryStrForLog(sql)
+	case mysql.ComStmtExecute, mysql.ComStmtFetch:
+		stmtID := binary.LittleEndian.Uint32(data[0:4])
+		return queryStrForLog(cc.preparedStmt2String(stmtID))
+	case mysql.ComStmtClose, mysql.ComStmtReset:
+		stmtID := binary.LittleEndian.Uint32(data[0:4])
+		return mysql.Command2Str[cmd] + " " + strconv.Itoa(int(stmtID))
+	default:
+		if cmdStr, ok := mysql.Command2Str[cmd]; ok {
+			return cmdStr
+		}
+		return string(hack.String(data))
 	}
 }
 
-// TODO: implement this function
-func (cc *clientConn) logDispatchErrorInfo() {
-
+// PProfLabel return sql label used to tag pprof.
+func (cc getLastStmtInConn) PProfLabel() string {
+	if len(cc.lastPacket) == 0 {
+		return ""
+	}
+	cmd, data := cc.lastPacket[0], cc.lastPacket[1:]
+	switch cmd {
+	case mysql.ComInitDB:
+		return "UseDB"
+	case mysql.ComFieldList:
+		return "ListFields"
+	case mysql.ComStmtClose:
+		return "CloseStmt"
+	case mysql.ComStmtReset:
+		return "ResetStmt"
+	case mysql.ComQuery, mysql.ComStmtPrepare:
+		return parser.Normalize(queryStrForLog(string(hack.String(data))))
+	case mysql.ComStmtExecute, mysql.ComStmtFetch:
+		stmtID := binary.LittleEndian.Uint32(data[0:4])
+		return queryStrForLog(cc.preparedStmt2StringNoArgs(stmtID))
+	default:
+		return ""
+	}
 }
 
-// TODO: implement this function
-func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
+func queryStrForLog(query string) string {
+	const size = 4096
+	if len(query) > size {
+		return query[:size] + fmt.Sprintf("(len: %d)", len(query))
+	}
+	return query
+}
 
+func errStrForLog(err error) string {
+	if kv.ErrKeyExists.Equal(err) || parser.ErrParse.Equal(err) {
+		// Do not log stack for duplicated entry error.
+		return err.Error()
+	}
+	return errors.ErrorStack(err)
 }

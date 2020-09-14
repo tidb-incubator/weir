@@ -33,7 +33,8 @@ var testNamespaceConfig = Namespace{
 var testProxyConfig = Proxy{
 	Version: "v1",
 	ProxyServer: ProxyServer{
-		Addr: "0.0.0.0:4000",
+		Addr:           "0.0.0.0:4000",
+		MaxConnections: 1,
 	},
 	AdminServer: AdminServer{
 		Addr:            "0.0.0.0:4001",
@@ -61,6 +62,9 @@ var testProxyConfig = Proxy{
 		ConfigFile: ConfigFile{
 			Path: ".",
 		},
+	},
+	Performance: Performance{
+		TCPKeepAlive: true,
 	},
 }
 
