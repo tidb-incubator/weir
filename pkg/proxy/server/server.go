@@ -76,7 +76,6 @@ func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 
 	s.initCapability()
 
-	// TODO: implement this function
 	if err := s.initListener(); err != nil {
 		return nil, err
 	}
@@ -94,7 +93,7 @@ func (s *Server) initCapability() {
 	}
 }
 
-// TODO: implement this function
+// TODO(eastfisher): support unix socket and proxyprotocol
 func (s *Server) initListener() error {
 	listener, err := net.Listen("tcp", s.cfg.ProxyServer.Addr)
 	if err != nil {
