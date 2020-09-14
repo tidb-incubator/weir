@@ -331,7 +331,7 @@ func (cc *clientConn) writeMultiResultset(ctx context.Context, rss []ResultSet, 
 	for i, rs := range rss {
 		lastRs := i == len(rss)-1
 
-		// TODO: implement ths function
+		// TODO: implement this function
 		// currently, we do not need multi query
 		/*
 			if r, ok := rs.(*tidbResultSet).recordSet.(sqlexec.MultiQueryNoDelayResult); ok {
