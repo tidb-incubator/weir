@@ -60,7 +60,6 @@ type Server struct {
 }
 
 // NewServer creates a new Server.
-// TODO: implement this function
 func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 	// TODO: handle the unset fields
 	s := &Server{
@@ -70,7 +69,7 @@ func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 		//clients:           make(map[uint32]*clientConn),
 	}
 
-	// TODO: set tlsConfig
+	// TODO(eastfisher): set tlsConfig
 
 	setSystemTimeZoneVariable()
 
@@ -79,6 +78,8 @@ func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 	if err := s.initListener(); err != nil {
 		return nil, err
 	}
+
+	// TODO(eastfisher): init status http server
 
 	// Init rand seed for randomBuf()
 	rand.Seed(time.Now().UTC().UnixNano())
