@@ -133,23 +133,26 @@ func (s *Server) GetNextConnID() uint32 {
 	return atomic.AddUint32(&s.baseConnID, 1)
 }
 
-// TODO: implement this function
-func (s *Server) onConn(clientConn *clientConn) {
-	ctx := context.Background()
-	if err := clientConn.handshake(ctx); err != nil {
-		// TODO: implement this function
+func (s *Server) onConn(conn *clientConn) {
+	ctx := logutil.WithConnID(context.Background(), conn.connectionID)
+	if err := conn.handshake(ctx); err != nil {
+		// Some keep alive services will send request to TiDB and disconnect immediately.
+		// So we only record metrics.
 		metrics.HandShakeErrorCounter.Inc()
-		err = clientConn.Close()
+		err = conn.Close()
 		terror.Log(errors.Trace(err))
 		return
 	}
 
-	// do something before close
-	defer func() {
+	logutil.Logger(ctx).Info("new connection", zap.String("remoteAddr", conn.bufReadConn.RemoteAddr().String()))
 
+	defer func() {
+		logutil.Logger(ctx).Info("connection closed")
 	}()
 
-	clientConn.Run(ctx)
+	// TODO(eastfisher): record ConnGauge
+
+	conn.Run(ctx)
 }
 
 func (s *Server) newClientConn(conn net.Conn) *clientConn {
