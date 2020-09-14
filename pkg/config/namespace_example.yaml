@@ -1,0 +1,28 @@
+version: "v1"
+cluster: "test_cluster"
+namespace: "test_namespace"
+frontend:
+  allowed_dbs:
+    - "testdb0"
+    - "testdb1"
+  slow_sql_time: 50
+  denied_sqls:
+    - "SELECT * FROM tb1"
+  denied_ips:
+    - "10.10.0.1"
+  idle_timeout: 3600
+  users:
+    - username: "hello"
+      password: "world"
+    - username: "hello1"
+      password: "world1"
+backend:
+  instances:
+    - "127.0.0.1:4000"
+    - "127.0.0.1:4001"
+    - "127.0.0.1:4002"
+  username: "root"
+  password: "123456"
+  selector_type: "random"
+  pool_size: 2
+  idle_timeout: 60
