@@ -187,12 +187,7 @@ func (cc *clientConn) writeResultset(ctx context.Context, rs ResultSet, binary b
 		buf := make([]byte, 4096)
 		stackSize := runtime.Stack(buf, false)
 		buf = buf[:stackSize]
-
-		// TODO: implement this function
-		logutil.Logger(ctx).Error("write query result panic", zap.Uint8("lastCmdType", cc.lastPacket[0]),
-			zap.ByteString("lastData", cc.lastPacket[1:]), zap.String("stack", string(buf)))
-		// we don't use getLastStmtInConn for simplicity
-		//logutil.Logger(ctx).Error("write query result panic", zap.Stringer("lastSQL", getLastStmtInConn{cc}), zap.String("stack", string(buf)))
+		logutil.Logger(ctx).Error("write query result panic", zap.Stringer("lastSQL", getLastStmtInConn{cc}), zap.String("stack", string(buf)))
 	}()
 	var err error
 	if mysql.HasCursorExistsFlag(serverStatus) {
