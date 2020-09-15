@@ -71,7 +71,7 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 	// copied from go-mysql client/conn.readResultRows()
 	// since convertFieldsToColumnInfos() only read result.Value,
 	// so we have to write row data back to value
-	// FIXME: remove this when weir client is finished
+	// FIXME(eastfisher): remove this when weir client is finished
 	if cap(result.Values) < len(result.RowDatas) {
 		result.Values = make([][]gomysql.FieldValue, len(result.RowDatas))
 	} else {
