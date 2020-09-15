@@ -2,11 +2,13 @@ package driver
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
+	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
 	"go.uber.org/zap"
@@ -25,6 +27,8 @@ func (q *QueryCtxImpl) execute(ctx context.Context, sql string) ([]server.Result
 // TODO: implement this function
 func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
 	switch stmt := stmtNode.(type) {
+	case *ast.SetStmt:
+		return nil, q.setVariable(ctx, stmt)
 	case *ast.UseStmt:
 		err := q.useDB(ctx, stmt.DBName)
 		return nil, err
@@ -122,6 +126,29 @@ func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
 		return mysql.NewErrf(mysql.ErrDBaccessDenied, "db %s access denied", db)
 	}
 	q.currentDB = db
+	return nil
+}
+
+func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error {
+	for _, v := range stmt.Variables {
+		switch strings.ToLower(v.Name) {
+		case variable.AutoCommit:
+			return q.setAutoCommit(ctx, v)
+		}
+	}
+	return nil
+}
+
+func (q *QueryCtxImpl) setAutoCommit(ctx context.Context, v *ast.VariableAssignment) error {
+	value, ok := v.Value.(ast.ValueExpr)
+	if !ok {
+		return errors.Errorf("invalid autocommit value type %T", v.Value)
+	}
+	autocommitInt64, ok := value.GetValue().(int64)
+	if !ok {
+		return errors.Errorf("autocommit value is not int64, type %T", value.GetValue())
+	}
+	q.sessionVars.SetStatusFlag(mysql.ServerStatusAutocommit, autocommitInt64 == 1)
 	return nil
 }
 
