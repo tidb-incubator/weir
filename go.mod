@@ -6,6 +6,7 @@ require (
 	github.com/coreos/etcd v3.3.25+incompatible
 	github.com/etcd-io/etcd v3.3.25+incompatible
 	github.com/goccy/go-yaml v1.8.2
+	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pingcap/check v0.0.0-20200212061837-5e12011dc712
 	github.com/pingcap/errors v0.11.5-0.20190809092503-95897b64e011
 	github.com/pingcap/failpoint v0.0.0-20200702092429-9f69995143ce
