@@ -109,9 +109,8 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 	return []server.ResultSet{resultSet}, nil
 }
 
-// TODO: implement this function
 func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
-	if db != "bug_test" {
+	if !q.ns.Frontend().IsDatabaseAllowed(db) {
 		return mysql.NewErrf(mysql.ErrDBaccessDenied, "db %s access denied", db)
 	}
 	q.currentDB = db
