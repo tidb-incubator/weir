@@ -37,6 +37,10 @@ func newFakeFrontend() *fakeFrontend {
 	return &fakeFrontend{}
 }
 
+func (d *fakeNamespace) Name() string {
+	return "fakeNamespace"
+}
+
 func (d *fakeNamespace) Frontend() driver.Frontend {
 	return d.fe
 }
