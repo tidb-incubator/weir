@@ -144,14 +144,12 @@ func (cc *clientConn) useDB(ctx context.Context, db string) (err error) {
 // As the execution time of this function represents the performance of TiDB, we do time log and metrics here.
 // There is a special query `load data` that does not return result, which is handled differently.
 // Query `load stats` does not return result either.
-// TODO: implement this function
 func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 	rss, err := cc.ctx.Execute(ctx, sql)
 	if err != nil {
 		metrics.ExecuteErrorCounter.WithLabelValues(metrics.ExecuteErrorToLabel(err)).Inc()
 		return err
 	}
-
 	status := atomic.LoadInt32(&cc.status)
 	if rss != nil && (status == connStatusShutdown || status == connStatusWaitShutdown) {
 		for _, rs := range rss {
@@ -166,6 +164,7 @@ func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 			err = cc.writeMultiResultset(ctx, rss, false)
 		}
 	} else {
+		// (eastfisher)currently we does not support load data
 		err = cc.writeOK()
 	}
 	return err
