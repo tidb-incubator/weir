@@ -10,18 +10,18 @@ import (
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
 
-// TODO: implement this function
-func (q *QueryCtxImpl) doExecute(ctx context.Context, sql string) ([]server.ResultSet, error) {
-	stmt, err := q.parser.ParseOneStmt(sql, "", "")
+func (q *QueryCtxImpl) execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
+	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
+	stmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
 	if err != nil {
 		return nil, err
 	}
 
-	return q.dispatchStmt(ctx, sql, stmt)
+	return q.executeStmt(ctx, sql, stmt)
 }
 
 // TODO: implement this function
-func (q *QueryCtxImpl) dispatchStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
 	switch stmt := stmtNode.(type) {
 	case *ast.UseStmt:
 		err := q.useDB(ctx, stmt.DBName)

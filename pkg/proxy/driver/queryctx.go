@@ -99,7 +99,7 @@ func (q *QueryCtxImpl) CurrentDB() string {
 }
 
 func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
-	return q.doExecute(ctx, sql)
+	return q.execute(ctx, sql)
 }
 
 // TODO(eastfisher): remove this function when Driver interface is changed
