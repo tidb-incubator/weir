@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
@@ -34,6 +35,8 @@ type QueryCtxImpl struct {
 	currentDB   string
 	parser      *parser.Parser
 	sessionVars *SessionVarsWrapper
+	txnConn     PooledBackendConn
+	txnLock     sync.Mutex
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
@@ -138,7 +141,13 @@ func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error)
 }
 
 // TODO(eastfisher): implement this function
-func (*QueryCtxImpl) Close() error {
+func (q *QueryCtxImpl) Close() error {
+	q.txnLock.Lock()
+	defer q.txnLock.Unlock()
+
+	if q.txnConn != nil {
+		q.txnConn.PutBack()
+	}
 	return nil
 }
 

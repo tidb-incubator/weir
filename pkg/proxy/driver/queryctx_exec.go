@@ -7,7 +7,9 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
+	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
+	"go.uber.org/zap"
 )
 
 func (q *QueryCtxImpl) execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
@@ -30,6 +32,12 @@ func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast
 		return q.executeShowStmt(ctx, sql, stmt)
 	case *ast.SelectStmt:
 		return q.executeInBackend(ctx, sql, stmtNode)
+	case *ast.BeginStmt:
+		return nil, q.begin(ctx)
+	case *ast.CommitStmt:
+		return nil, q.commitOrRollback(ctx, true)
+	case *ast.RollbackStmt:
+		return nil, q.commitOrRollback(ctx, false)
 	default:
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "stmt %T not supported now", stmtNode)
 	}
@@ -115,4 +123,63 @@ func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
 	}
 	q.currentDB = db
 	return nil
+}
+
+func (q *QueryCtxImpl) begin(ctx context.Context) error {
+	q.txnLock.Lock()
+	defer q.txnLock.Unlock()
+
+	if q.txnConn == nil {
+		conn, err := q.ns.Backend().GetPooledConn(ctx)
+		if err != nil {
+			return err
+		}
+		q.txnConn = conn
+	}
+
+	var err error
+	defer func() {
+		if err != nil {
+			if errClose := q.txnConn.Close(); errClose != nil {
+				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", q.ns.Name()))
+			}
+			q.txnConn = nil
+		}
+	}()
+
+	if err = q.txnConn.Begin(); err != nil {
+		return err
+	}
+
+	q.sessionVars.SetStatusFlag(mysql.ServerStatusInTrans, true)
+	return nil
+}
+
+func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error {
+	q.txnLock.Lock()
+	defer q.txnLock.Unlock()
+
+	if q.txnConn == nil {
+		return errors.New("txn conn is not set")
+	}
+
+	var err error
+	defer func() {
+		if err != nil {
+			if errClose := q.txnConn.Close(); errClose != nil {
+				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", q.ns.Name()))
+			}
+		} else {
+			q.txnConn.PutBack()
+		}
+		q.txnConn = nil
+		q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
+	}()
+
+	if commit {
+		err = q.txnConn.Commit()
+	} else {
+		err = q.txnConn.Rollback()
+	}
+	return err
 }
