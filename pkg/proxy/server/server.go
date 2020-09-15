@@ -52,22 +52,24 @@ const defaultCapability = mysql.ClientLongPassword | mysql.ClientLongFlag |
 	mysql.ClientConnectAtts | mysql.ClientPluginAuth | mysql.ClientInteractive
 
 type Server struct {
-	cfg        *config.Proxy
-	tlsConfig  unsafe.Pointer // *tls.Config
-	driver     IDriver
-	listener   net.Listener
-	rwlock     sync.RWMutex
-	clients    map[uint32]*clientConn
-	baseConnID uint32
-	capability uint32
+	cfg               *config.Proxy
+	tlsConfig         unsafe.Pointer // *tls.Config
+	driver            IDriver
+	listener          net.Listener
+	rwlock            sync.RWMutex
+	concurrentLimiter *TokenLimiter
+	clients           map[uint32]*clientConn
+	baseConnID        uint32
+	capability        uint32
 }
 
 // NewServer creates a new Server.
 func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 	s := &Server{
-		cfg:     cfg,
-		driver:  driver,
-		clients: make(map[uint32]*clientConn),
+		cfg:               cfg,
+		driver:            driver,
+		concurrentLimiter: NewTokenLimiter(cfg.ProxyServer.TokenLimit),
+		clients:           make(map[uint32]*clientConn),
 	}
 
 	// TODO(eastfisher): set tlsConfig
@@ -138,8 +140,16 @@ func (s *Server) ConnectionCount() int {
 	return cnt
 }
 
-func (s *Server) GetNextConnID() uint32 {
-	return atomic.AddUint32(&s.baseConnID, 1)
+func (s *Server) getToken() *Token {
+	start := time.Now()
+	tok := s.concurrentLimiter.Get()
+	// Note that data smaller than one microsecond is ignored, because that case can be viewed as non-block.
+	metrics.GetTokenDurationHistogram.Observe(float64(time.Since(start).Nanoseconds() / 1e3))
+	return tok
+}
+
+func (s *Server) releaseToken(token *Token) {
+	s.concurrentLimiter.Put(token)
 }
 
 func (s *Server) onConn(conn *clientConn) {
@@ -200,19 +210,23 @@ func (s *Server) checkConnectionCount() error {
 	return nil
 }
 
-// TODO: implement this function
+// TODO(eastfisher): implement this function
 func (s *Server) isUnixSocket() bool {
 	return false
 }
 
 // Close closes the server.
-// TODO: implement this function
+// TODO(eastfisher): implement this function, close unix socket, status server, and gRPC server.
 func (s *Server) Close() {
+	s.rwlock.Lock()
+	defer s.rwlock.Unlock()
+
 	if s.listener != nil {
 		err := s.listener.Close()
 		terror.Log(errors.Trace(err))
 		s.listener = nil
 	}
+	metrics.ServerEventCounter.WithLabelValues(metrics.EventClose).Inc()
 }
 
 func killConn(conn *clientConn) {
