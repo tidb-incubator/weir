@@ -11,6 +11,7 @@ type NamespaceManager interface {
 }
 
 type Namespace interface {
+	Name() string
 	Frontend() Frontend
 	Backend() Backend
 	Closed() bool

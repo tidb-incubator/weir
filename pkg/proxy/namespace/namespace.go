@@ -269,6 +269,10 @@ func (n *NamespaceManagerImpl) RemoveNamespace(name string) error {
 	return nil
 }
 
+func (n *NamespaceImpl) Name() string {
+	return n.name
+}
+
 func (n *NamespaceImpl) Frontend() driver.Frontend {
 	fe, _ := n.nsmgr.getFrontend(n.name)
 	return fe
