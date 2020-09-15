@@ -121,9 +121,24 @@ func (*QueryCtxImpl) GetStatement(stmtID int) server.PreparedStatement {
 	return nil
 }
 
-// TODO(eastfisher): implement this function
-func (*QueryCtxImpl) FieldList(tableName string) (columns []*server.ColumnInfo, err error) {
-	return nil, fmt.Errorf("FieldList is unimplemented")
+func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error) {
+	conn, err := q.ns.Backend().GetPooledConn(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.PutBack()
+
+	if err := conn.UseDB(q.currentDB); err != nil {
+		return nil, err
+	}
+
+	fields, err := conn.FieldList(tableName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	columns := convertFieldsToColumnInfos(fields)
+	return columns, nil
 }
 
 // TODO(eastfisher): implement this function
