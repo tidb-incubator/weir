@@ -16,46 +16,78 @@ package server
 import (
 	"context"
 	"io"
+	"runtime/pprof"
 	"strings"
 	"sync/atomic"
+	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
 	"github.com/pingcap/tidb/executor"
 	"github.com/pingcap/tidb/metrics"
+	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util/hack"
 )
 
+// dispatch handles client request based on command which is the first byte of the data.
+// It also gets a token from server which is used to limit the concurrently handling clients.
+// The most frequently used command is ComQuery.
 func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
+	defer func() {
+		// reset killed for each request
+		atomic.StoreUint32(&cc.ctx.GetSessionVars().Killed, 0)
+	}()
+	span := opentracing.StartSpan("server.dispatch")
+
+	t := time.Now()
+	cc.lastPacket = data
 	cmd := data[0]
 	data = data[1:]
-
-	cc.setProcessInfoInDispatch(cmd)
-	return cc.dispatchRequest(ctx, cmd, data)
-}
-
-// TODO: implement this function
-func (cc *clientConn) setProcessInfoInDispatch(cmd byte) {
-	switch cmd {
-	case mysql.ComPing,
-		mysql.ComStmtClose,
-		mysql.ComStmtSendLongData,
-		mysql.ComStmtReset,
-		mysql.ComSetOption,
-		mysql.ComChangeUser:
-	case mysql.ComInitDB:
+	if variable.EnablePProfSQLCPU.Load() {
+		label := getLastStmtInConn{cc}.PProfLabel()
+		if len(label) > 0 {
+			defer pprof.SetGoroutineLabels(ctx)
+			ctx = pprof.WithLabels(ctx, pprof.Labels("sql", label))
+			pprof.SetGoroutineLabels(ctx)
+		}
 	}
-}
+	token := cc.server.getToken()
+	defer func() {
+		// if handleChangeUser failed, cc.ctx may be nil
+		if cc.ctx != nil {
+			cc.ctx.SetProcessInfo("", t, mysql.ComSleep, 0)
+		}
 
-// TODO: implement this function
-func (cc *clientConn) dispatchRequest(ctx context.Context, cmd byte, data []byte) error {
+		cc.server.releaseToken(token)
+		span.Finish()
+	}()
+
+	vars := cc.ctx.GetSessionVars()
+	// reset killed for each request
+	atomic.StoreUint32(&vars.Killed, 0)
+	if cmd < mysql.ComEnd {
+		cc.ctx.SetCommandValue(cmd)
+	}
+
 	dataStr := string(hack.String(data))
 	switch cmd {
+	case mysql.ComPing, mysql.ComStmtClose, mysql.ComStmtSendLongData, mysql.ComStmtReset,
+		mysql.ComSetOption, mysql.ComChangeUser:
+		cc.ctx.SetProcessInfo("", t, cmd, 0)
+	case mysql.ComInitDB:
+		cc.ctx.SetProcessInfo("use "+dataStr, t, cmd, 0)
+	}
+
+	switch cmd {
 	case mysql.ComSleep:
+		// TODO: According to mysql document, this command is supposed to be used only internally.
+		// So it's just a temp fix, not sure if it's done right.
+		// Investigate this command and write test case later.
 		return nil
 	case mysql.ComQuit:
 		return io.EOF
-	case mysql.ComQuery:
+	case mysql.ComQuery: // Most frequently used command.
 		// For issue 1989
 		// Input payload may end with byte '\0', we didn't find related mysql document about it, but mysql
 		// implementation accept that case. So trim the last '\0' here as if the payload an EOF string.
