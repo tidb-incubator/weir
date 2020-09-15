@@ -10,18 +10,18 @@ import (
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
 
-// TODO: implement this function
-func (q *QueryCtxImpl) doExecute(ctx context.Context, sql string) ([]server.ResultSet, error) {
-	stmt, err := q.parser.ParseOneStmt(sql, "", "")
+func (q *QueryCtxImpl) execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
+	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
+	stmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
 	if err != nil {
 		return nil, err
 	}
 
-	return q.dispatchStmt(ctx, sql, stmt)
+	return q.executeStmt(ctx, sql, stmt)
 }
 
 // TODO: implement this function
-func (q *QueryCtxImpl) dispatchStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
 	switch stmt := stmtNode.(type) {
 	case *ast.UseStmt:
 		err := q.useDB(ctx, stmt.DBName)
@@ -71,7 +71,7 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 	// copied from go-mysql client/conn.readResultRows()
 	// since convertFieldsToColumnInfos() only read result.Value,
 	// so we have to write row data back to value
-	// FIXME: remove this when weir client is finished
+	// FIXME(eastfisher): remove this when weir client is finished
 	if cap(result.Values) < len(result.RowDatas) {
 		result.Values = make([][]gomysql.FieldValue, len(result.RowDatas))
 	} else {
@@ -109,9 +109,8 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 	return []server.ResultSet{resultSet}, nil
 }
 
-// TODO: implement this function
 func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
-	if db != "bug_test" {
+	if !q.ns.Frontend().IsDatabaseAllowed(db) {
 		return mysql.NewErrf(mysql.ErrDBaccessDenied, "db %s access denied", db)
 	}
 	q.currentDB = db

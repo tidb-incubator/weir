@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
@@ -44,42 +45,51 @@ func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
 	}
 }
 
-func (*QueryCtxImpl) Status() uint16 {
-	return ServerStatusAutocommit
+func (q *QueryCtxImpl) Status() uint16 {
+	return q.sessionVars.Status
 }
 
-func (*QueryCtxImpl) LastInsertID() uint64 {
-	return 0
+func (q *QueryCtxImpl) LastInsertID() uint64 {
+	if q.sessionVars.StmtCtx.LastInsertID > 0 {
+		return q.sessionVars.StmtCtx.LastInsertID
+	}
+	return q.sessionVars.StmtCtx.InsertID
 }
 
-func (*QueryCtxImpl) LastMessage() string {
-	return "test last message"
+func (q *QueryCtxImpl) LastMessage() string {
+	return q.sessionVars.StmtCtx.GetMessage()
 }
 
-func (*QueryCtxImpl) AffectedRows() uint64 {
-	return 1
+func (q *QueryCtxImpl) AffectedRows() uint64 {
+	return q.sessionVars.StmtCtx.AffectedRows()
 }
 
+// TODO(eastfisher): implement this function
 func (*QueryCtxImpl) Value(key fmt.Stringer) interface{} {
 	return nil
 }
 
+// TODO(eastfisher): implement this function
 func (*QueryCtxImpl) SetValue(key fmt.Stringer, value interface{}) {
 	return
 }
 
+// TODO(eastfisher): Does weir need to support this?
 func (*QueryCtxImpl) SetProcessInfo(sql string, t time.Time, command byte, maxExecutionTime uint64) {
 	return
 }
 
+// TODO(eastfisher): remove this function when Driver interface is changed
 func (*QueryCtxImpl) CommitTxn(ctx context.Context) error {
 	return nil
 }
 
+// TODO(eastfisher): remove this function when Driver interface is changed
 func (*QueryCtxImpl) RollbackTxn() {
 	return
 }
 
+// TODO(eastfisher): implement this function
 func (*QueryCtxImpl) WarningCount() uint16 {
 	return 0
 }
@@ -89,29 +99,34 @@ func (q *QueryCtxImpl) CurrentDB() string {
 }
 
 func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
-	return q.doExecute(ctx, sql)
+	return q.execute(ctx, sql)
 }
 
+// TODO(eastfisher): remove this function when Driver interface is changed
 func (*QueryCtxImpl) ExecuteInternal(ctx context.Context, sql string) ([]server.ResultSet, error) {
 	return nil, nil
 }
 
-func (*QueryCtxImpl) SetClientCapability(uint32) {
-	return
+func (q *QueryCtxImpl) SetClientCapability(capability uint32) {
+	q.sessionVars.ClientCapability = capability
 }
 
+// TODO(eastfisher): implement this function when prepare is supported
 func (*QueryCtxImpl) Prepare(sql string) (statement server.PreparedStatement, columns, params []*server.ColumnInfo, err error) {
 	return nil, nil, nil, fmt.Errorf("prepare is unimplemented")
 }
 
+// TODO(eastfisher): implement this function when prepare is supported
 func (*QueryCtxImpl) GetStatement(stmtID int) server.PreparedStatement {
 	return nil
 }
 
+// TODO(eastfisher): implement this function
 func (*QueryCtxImpl) FieldList(tableName string) (columns []*server.ColumnInfo, err error) {
-	return nil, nil
+	return nil, fmt.Errorf("FieldList is unimplemented")
 }
 
+// TODO(eastfisher): implement this function
 func (*QueryCtxImpl) Close() error {
 	return nil
 }
@@ -125,6 +140,7 @@ func (q *QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bo
 	return true
 }
 
+// TODO(eastfisher): does weir need to support show processlist?
 func (*QueryCtxImpl) ShowProcess() *util.ProcessInfo {
 	return nil
 }
@@ -133,10 +149,11 @@ func (q *QueryCtxImpl) GetSessionVars() *variable.SessionVars {
 	return q.sessionVars
 }
 
-func (*QueryCtxImpl) SetCommandValue(command byte) {
-	return
+func (q *QueryCtxImpl) SetCommandValue(command byte) {
+	atomic.StoreUint32(&q.sessionVars.CommandValue, uint32(command))
 }
 
+// TODO(eastfisher): remove this function when Driver interface is changed
 func (*QueryCtxImpl) SetSessionManager(util.SessionManager) {
 	return
 }
