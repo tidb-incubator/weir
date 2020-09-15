@@ -210,13 +210,13 @@ func (s *Server) checkConnectionCount() error {
 	return nil
 }
 
-// TODO: implement this function
+// TODO(eastfisher): implement this function
 func (s *Server) isUnixSocket() bool {
 	return false
 }
 
 // Close closes the server.
-// TODO: implement this function, close unix listener, status server, and gRPC server.
+// TODO(eastfisher): implement this function, close unix socket, status server, and gRPC server.
 func (s *Server) Close() {
 	s.rwlock.Lock()
 	defer s.rwlock.Unlock()
