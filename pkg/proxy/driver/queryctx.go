@@ -3,7 +3,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
@@ -34,34 +33,31 @@ type QueryCtxImpl struct {
 	ns          Namespace
 	currentDB   string
 	parser      *parser.Parser
-	sessionVars *variable.SessionVars
+	sessionVars *SessionVarsWrapper
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
 	return &QueryCtxImpl{
 		nsmgr:       nsmgr,
 		parser:      parser.New(),
-		sessionVars: variable.NewSessionVars(),
+		sessionVars: NewSessionVarsWrapper(variable.NewSessionVars()),
 	}
 }
 
 func (q *QueryCtxImpl) Status() uint16 {
-	return q.sessionVars.Status
+	return q.sessionVars.Status()
 }
 
 func (q *QueryCtxImpl) LastInsertID() uint64 {
-	if q.sessionVars.StmtCtx.LastInsertID > 0 {
-		return q.sessionVars.StmtCtx.LastInsertID
-	}
-	return q.sessionVars.StmtCtx.InsertID
+	return q.sessionVars.LastInsertID()
 }
 
 func (q *QueryCtxImpl) LastMessage() string {
-	return q.sessionVars.StmtCtx.GetMessage()
+	return q.sessionVars.GetMessage()
 }
 
 func (q *QueryCtxImpl) AffectedRows() uint64 {
-	return q.sessionVars.StmtCtx.AffectedRows()
+	return q.sessionVars.AffectedRows()
 }
 
 // TODO(eastfisher): implement this function
@@ -108,7 +104,7 @@ func (*QueryCtxImpl) ExecuteInternal(ctx context.Context, sql string) ([]server.
 }
 
 func (q *QueryCtxImpl) SetClientCapability(capability uint32) {
-	q.sessionVars.ClientCapability = capability
+	q.sessionVars.SetClientCapability(capability)
 }
 
 // TODO(eastfisher): implement this function when prepare is supported
@@ -161,11 +157,11 @@ func (*QueryCtxImpl) ShowProcess() *util.ProcessInfo {
 }
 
 func (q *QueryCtxImpl) GetSessionVars() *variable.SessionVars {
-	return q.sessionVars
+	return q.sessionVars.sessionVars
 }
 
 func (q *QueryCtxImpl) SetCommandValue(command byte) {
-	atomic.StoreUint32(&q.sessionVars.CommandValue, uint32(command))
+	q.sessionVars.SetCommandValue(command)
 }
 
 // TODO(eastfisher): remove this function when Driver interface is changed
