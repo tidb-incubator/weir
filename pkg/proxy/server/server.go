@@ -216,13 +216,17 @@ func (s *Server) isUnixSocket() bool {
 }
 
 // Close closes the server.
-// TODO: implement this function
+// TODO: implement this function, close unix listener, status server, and gRPC server.
 func (s *Server) Close() {
+	s.rwlock.Lock()
+	defer s.rwlock.Unlock()
+
 	if s.listener != nil {
 		err := s.listener.Close()
 		terror.Log(errors.Trace(err))
 		s.listener = nil
 	}
+	metrics.ServerEventCounter.WithLabelValues(metrics.EventClose).Inc()
 }
 
 func killConn(conn *clientConn) {
