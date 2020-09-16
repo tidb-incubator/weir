@@ -102,11 +102,11 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 }
 
 func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
-	conn, err := q.ns.Backend().GetPooledConn(ctx)
+	conn, err := q.getBackendConn(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.PutBack()
+	defer q.releaseBackendConn(conn)
 
 	if err := conn.UseDB(q.currentDB); err != nil {
 		return nil, err
@@ -119,6 +119,15 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 
 	resultSet := wrapMySQLResult(result)
 	return []server.ResultSet{resultSet}, nil
+}
+
+func (q *QueryCtxImpl) getBackendConn(ctx context.Context) (PooledBackendConn, error) {
+	conn, err := q.ns.Backend().GetPooledConn(ctx)
+	return conn, err
+}
+
+func (q *QueryCtxImpl) releaseBackendConn(conn PooledBackendConn) {
+	conn.PutBack()
 }
 
 func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
