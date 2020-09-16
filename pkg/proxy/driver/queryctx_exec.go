@@ -140,41 +140,52 @@ func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error
 }
 
 func (q *QueryCtxImpl) setAutoCommit(ctx context.Context, v *ast.VariableAssignment) error {
-	value, ok := v.Value.(ast.ValueExpr)
+	q.txnLock.Lock()
+	defer q.txnLock.Unlock()
+
+	var err error
+	autocommit, err := getAutoCommitValue(v.Value)
+	if err != nil {
+		return err
+	}
+
+	originAutoCommit := q.isAutoCommit()
+	defer func() {
+		if err != nil {
+			q.sessionVars.SetStatusFlag(mysql.ServerStatusAutocommit, originAutoCommit)
+		}
+		q.postUseTxnConn(err)
+	}()
+
+	q.sessionVars.SetStatusFlag(mysql.ServerStatusAutocommit, autocommit)
+	return q.initTxnConn(ctx)
+}
+
+func getAutoCommitValue(v ast.ExprNode) (bool, error) {
+	if _, ok := v.(*ast.DefaultExpr); ok {
+		return true, nil
+	}
+	value, ok := v.(ast.ValueExpr)
 	if !ok {
-		return errors.Errorf("invalid autocommit value type %T", v.Value)
+		return false, errors.Errorf("invalid autocommit value type %T", v)
 	}
 	autocommitInt64, ok := value.GetValue().(int64)
 	if !ok {
-		return errors.Errorf("autocommit value is not int64, type %T", value.GetValue())
+		return false, errors.Errorf("autocommit value is not int64, type %T", value.GetValue())
 	}
-	q.sessionVars.SetStatusFlag(mysql.ServerStatusAutocommit, autocommitInt64 == 1)
-	return nil
+	return autocommitInt64 == 1, nil
 }
 
 func (q *QueryCtxImpl) begin(ctx context.Context) error {
 	q.txnLock.Lock()
 	defer q.txnLock.Unlock()
 
-	if q.txnConn == nil {
-		conn, err := q.ns.Backend().GetPooledConn(ctx)
-		if err != nil {
-			return err
-		}
-		q.txnConn = conn
-	}
-
 	var err error
 	defer func() {
-		if err != nil {
-			if errClose := q.txnConn.Close(); errClose != nil {
-				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", q.ns.Name()))
-			}
-			q.txnConn = nil
-		}
+		q.postUseTxnConn(err)
 	}()
 
-	if err = q.txnConn.SetAutoCommit(q.isAutoCommit()); err != nil {
+	if err = q.initTxnConn(ctx); err != nil {
 		return err
 	}
 
@@ -197,13 +208,7 @@ func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error 
 
 	var err error
 	defer func() {
-		if err != nil {
-			if errClose := q.txnConn.Close(); errClose != nil {
-				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", q.ns.Name()))
-			}
-			q.txnConn = nil
-		}
-		q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
+		q.postUseTxnConn(err)
 	}()
 
 	if commit {
@@ -215,14 +220,40 @@ func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error 
 		return err
 	}
 
-	if q.isAutoCommit() {
-		if err = q.txnConn.SetAutoCommit(true); err != nil {
-			return err
-		}
-		q.txnConn.PutBack()
-		q.txnConn = nil
-	}
+	q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
 	return nil
+}
+
+func (q *QueryCtxImpl) initTxnConn(ctx context.Context) error {
+	if q.txnConn != nil {
+		return nil
+	}
+	conn, err := q.ns.Backend().GetPooledConn(ctx)
+	if err != nil {
+		return err
+	}
+	if err := conn.SetAutoCommit(q.isAutoCommit()); err != nil {
+		return err
+	}
+	q.txnConn = conn
+	return nil
+}
+
+func (q *QueryCtxImpl) postUseTxnConn(err error) {
+	if err != nil {
+		if q.txnConn != nil {
+			if errClose := q.txnConn.Close(); errClose != nil {
+				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", q.ns.Name()))
+			}
+			q.txnConn = nil
+		}
+		q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
+	} else {
+		if q.isAutoCommit() && !q.isInTransaction() && q.txnConn != nil {
+			q.txnConn.PutBack()
+			q.txnConn = nil
+		}
+	}
 }
 
 func (q *QueryCtxImpl) isAutoCommit() bool {
