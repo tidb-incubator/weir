@@ -174,6 +174,10 @@ func (q *QueryCtxImpl) begin(ctx context.Context) error {
 		}
 	}()
 
+	if err = q.txnConn.SetAutoCommit(q.isAutoCommit()); err != nil {
+		return err
+	}
+
 	if err = q.txnConn.Begin(); err != nil {
 		return err
 	}
@@ -187,6 +191,7 @@ func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error 
 	defer q.txnLock.Unlock()
 
 	if q.txnConn == nil {
+		q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
 		return errors.New("txn conn is not set")
 	}
 
@@ -196,10 +201,8 @@ func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error 
 			if errClose := q.txnConn.Close(); errClose != nil {
 				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", q.ns.Name()))
 			}
-		} else {
-			q.txnConn.PutBack()
+			q.txnConn = nil
 		}
-		q.txnConn = nil
 		q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
 	}()
 
@@ -208,5 +211,24 @@ func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error 
 	} else {
 		err = q.txnConn.Rollback()
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	if q.isAutoCommit() {
+		if err = q.txnConn.SetAutoCommit(true); err != nil {
+			return err
+		}
+		q.txnConn.PutBack()
+		q.txnConn = nil
+	}
+	return nil
+}
+
+func (q *QueryCtxImpl) isAutoCommit() bool {
+	return q.sessionVars.GetStatusFlag(ServerStatusAutocommit)
+}
+
+func (q *QueryCtxImpl) isInTransaction() bool {
+	return q.sessionVars.GetStatusFlag(ServerStatusInTrans)
 }
