@@ -1,0 +1,37 @@
+version: "v1"
+proxy_server:
+  addr: "0.0.0.0:6000"
+  max_connections: 1
+admin_server:
+  addr: "0.0.0.0:6001"
+  enable_basic_auth: false
+  user: "hello"
+  password: "world"
+performance:
+  tcp_keep_alive: true
+log:
+  # Log level: debug, info, warn, error, fatal.
+  level: "debug"
+  # Log format, one of json, text, console.
+  format: "console"
+  # File logging.
+  log_file:
+    # Log file name.
+    filename: ""
+    # Max log file size in MB (upper limit to 4096MB).
+    max_size: 300
+    # Max log file keep days. No clean up by default.
+    max_days: 1
+    # Maximum number of old log files to retain. No clean up by default.
+    max_backups: 1
+registry:
+  enable: false
+  type: "etcd"
+  addrs:
+    - "192.168.0.1:2379"
+    - "192.168.0.2:2379"
+    - "192.168.0.3:2379"
+config_center:
+  type: "file"
+  config_file:
+    path: "./etc"
