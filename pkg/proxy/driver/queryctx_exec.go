@@ -102,13 +102,43 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 }
 
 func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
-	conn, err := q.getBackendConn(ctx)
+	if !q.isAutoCommit() || q.isInTransaction() {
+		return q.executeInTxnConn(ctx, sql, stmtNode)
+	} else {
+		return q.executeInNoTxnConn(ctx, sql, stmtNode)
+	}
+}
+
+func (q *QueryCtxImpl) executeInTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+	q.txnLock.Lock()
+	defer q.txnLock.Unlock()
+
+	var err error
+	defer func() {
+		q.postUseTxnConn(err)
+	}()
+
+	if err = q.initTxnConn(ctx); err != nil {
+		return nil, err
+	}
+
+	var ret []server.ResultSet
+	ret, err = executeInBackendConn(ctx, q.txnConn, q.currentDB, sql, stmtNode)
+	return ret, err
+}
+
+func (q *QueryCtxImpl) executeInNoTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+	conn, err := q.ns.Backend().GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer q.releaseBackendConn(conn)
+	defer conn.PutBack()
 
-	if err := conn.UseDB(q.currentDB); err != nil {
+	return executeInBackendConn(ctx, conn, q.currentDB, sql, stmtNode)
+}
+
+func executeInBackendConn(ctx context.Context, conn PooledBackendConn, db string, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+	if err := conn.UseDB(db); err != nil {
 		return nil, err
 	}
 
@@ -119,15 +149,6 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 
 	resultSet := wrapMySQLResult(result)
 	return []server.ResultSet{resultSet}, nil
-}
-
-func (q *QueryCtxImpl) getBackendConn(ctx context.Context) (PooledBackendConn, error) {
-	conn, err := q.ns.Backend().GetPooledConn(ctx)
-	return conn, err
-}
-
-func (q *QueryCtxImpl) releaseBackendConn(conn PooledBackendConn) {
-	conn.PutBack()
 }
 
 func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
