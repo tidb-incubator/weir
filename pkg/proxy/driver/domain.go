@@ -45,7 +45,7 @@ type BackendConn interface {
 	Rollback() error
 	SetCharset(charset string) error
 	FieldList(table string, wildcard string) ([]*mysql.Field, error)
-	SetAutoCommit() error
+	SetAutoCommit(bool) error
 	IsAutoCommit() bool
 	IsInTransaction() bool
 	GetCharset() string

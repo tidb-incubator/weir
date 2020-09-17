@@ -30,6 +30,10 @@ func (s *SessionVarsWrapper) Status() uint16 {
 	return s.sessionVars.Status
 }
 
+func (s *SessionVarsWrapper) GetStatusFlag(flag uint16) bool {
+	return s.sessionVars.GetStatusFlag(flag)
+}
+
 func (s *SessionVarsWrapper) SetStatusFlag(flag uint16, on bool) {
 	s.sessionVars.SetStatusFlag(flag, on)
 }
