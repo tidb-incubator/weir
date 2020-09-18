@@ -18,9 +18,9 @@ const (
 )
 
 type EtcdConfigCenter struct {
-	etcdClient *clientv3.Client
-	kv         clientv3.KV
-	basePath   string
+	etcdClient  *clientv3.Client
+	kv          clientv3.KV
+	basePath    string
 	strictParse bool
 }
 
