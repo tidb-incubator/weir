@@ -7,7 +7,8 @@ import (
 )
 
 type SessionVarsWrapper struct {
-	sessionVars *variable.SessionVars
+	sessionVars  *variable.SessionVars
+	affectedRows uint64
 }
 
 func NewSessionVarsWrapper(sessionVars *variable.SessionVars) *SessionVarsWrapper {
@@ -43,7 +44,11 @@ func (s *SessionVarsWrapper) GetCharsetInfo() (charset, collation string) {
 }
 
 func (s *SessionVarsWrapper) AffectedRows() uint64 {
-	return s.sessionVars.StmtCtx.AffectedRows()
+	return s.affectedRows
+}
+
+func (s *SessionVarsWrapper) SetAffectRows(count uint64) {
+	s.affectedRows = count
 }
 
 func (s *SessionVarsWrapper) LastInsertID() uint64 {
