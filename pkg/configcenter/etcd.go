@@ -6,10 +6,11 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/pingcap-incubator/weir/pkg/config"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb/util/logutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.uber.org/zap"
 )
 
@@ -33,7 +34,7 @@ func CreateEtcdConfigCenter(cfg config.ConfigEtcd) (*EtcdConfigCenter, error) {
 	}
 	etcdClient, err := clientv3.New(etcdConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "create etcd config center error")
 	}
 
 	center := NewEtcdConfigCenter(etcdClient, cfg.BasePath, cfg.StrictParse)
