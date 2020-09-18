@@ -6,10 +6,11 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/pingcap-incubator/weir/pkg/config"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb/util/logutil"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.uber.org/zap"
 )
 
@@ -33,7 +34,7 @@ func CreateEtcdConfigCenter(cfg config.ConfigEtcd) (*EtcdConfigCenter, error) {
 	}
 	etcdClient, err := clientv3.New(etcdConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "create etcd config center error")
 	}
 
 	center := NewEtcdConfigCenter(etcdClient, cfg.BasePath, cfg.StrictParse)
@@ -61,7 +62,8 @@ func (e *EtcdConfigCenter) get(ctx context.Context, key string) (*mvccpb.KeyValu
 }
 
 func (e *EtcdConfigCenter) list(ctx context.Context) ([]*mvccpb.KeyValue, error) {
-	resp, err := e.kv.Get(ctx, e.basePath, clientv3.WithPrefix())
+	baseDir := appendSlashToDirPath(e.basePath)
+	resp, err := e.kv.Get(ctx, baseDir, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -110,4 +112,15 @@ func (e *EtcdConfigCenter) Close() {
 
 func getNamespacePath(basePath, ns string) string {
 	return path.Join(basePath, ns)
+}
+
+// avoid base dir path prefix equal
+func appendSlashToDirPath(dir string) string {
+	if len(dir) == 0 {
+		return ""
+	}
+	if dir[len(dir)-1] == '/' {
+		return dir
+	}
+	return dir + "/"
 }
