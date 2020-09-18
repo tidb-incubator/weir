@@ -123,7 +123,7 @@ func (q *QueryCtxImpl) executeInTxnConn(ctx context.Context, sql string, stmtNod
 	}
 
 	var ret []server.ResultSet
-	ret, err = executeInBackendConn(ctx, q.txnConn, q.currentDB, sql, stmtNode)
+	ret, err = q.executeInBackendConn(ctx, q.txnConn, q.currentDB, sql, stmtNode)
 	return ret, err
 }
 
@@ -134,10 +134,10 @@ func (q *QueryCtxImpl) executeInNoTxnConn(ctx context.Context, sql string, stmtN
 	}
 	defer conn.PutBack()
 
-	return executeInBackendConn(ctx, conn, q.currentDB, sql, stmtNode)
+	return q.executeInBackendConn(ctx, conn, q.currentDB, sql, stmtNode)
 }
 
-func executeInBackendConn(ctx context.Context, conn PooledBackendConn, db string, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeInBackendConn(ctx context.Context, conn PooledBackendConn, db string, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
 	if err := conn.UseDB(db); err != nil {
 		return nil, err
 	}
@@ -145,6 +145,12 @@ func executeInBackendConn(ctx context.Context, conn PooledBackendConn, db string
 	result, err := conn.Execute(sql)
 	if err != nil {
 		return nil, err
+	}
+
+	if result.Resultset == nil {
+		q.sessionVars.SetAffectRows(result.AffectedRows)
+		q.sessionVars.SetLastInsertID(result.InsertId)
+		return nil, nil
 	}
 
 	resultSet := wrapMySQLResult(result)
