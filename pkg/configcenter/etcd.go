@@ -110,6 +110,12 @@ func (e *EtcdConfigCenter) SetNamespace(ns string, value string) error {
 	return err
 }
 
+func (e *EtcdConfigCenter) DelNamespace(ns string) error {
+	ctx := context.Background()
+	_, err := e.kv.Delete(ctx, ns)
+	return err
+}
+
 func (e *EtcdConfigCenter) Close() {
 	if err := e.etcdClient.Close(); err != nil {
 		logutil.BgLogger().Error("close etcd client error", zap.Error(err))
