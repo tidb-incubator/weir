@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	github.com/coreos/etcd v3.3.25+incompatible
-	github.com/etcd-io/etcd v3.3.25+incompatible
 	github.com/goccy/go-yaml v1.8.2
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pingcap/check v0.0.0-20200212061837-5e12011dc712
