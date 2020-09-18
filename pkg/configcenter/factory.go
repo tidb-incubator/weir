@@ -7,6 +7,7 @@ import (
 
 const (
 	ConfigCenterTypeFile = "file"
+	ConfigCenterTypeEtcd = "etcd"
 )
 
 type ConfigCenter interface {
@@ -18,6 +19,8 @@ func CreateConfigCenter(cfg config.ConfigCenter) (ConfigCenter, error) {
 	switch cfg.Type {
 	case ConfigCenterTypeFile:
 		return CreateFileConfigCenter(cfg.ConfigFile.Path)
+	case ConfigCenterTypeEtcd:
+		return CreateEtcdConfigCenter(cfg.ConfigEtcd)
 	default:
 		return nil, errors.New("invalid config center type")
 	}
