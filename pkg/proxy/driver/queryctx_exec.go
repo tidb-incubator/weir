@@ -55,7 +55,7 @@ func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast
 func (q *QueryCtxImpl) executeShowStmt(ctx context.Context, sql string, stmt *ast.ShowStmt) ([]server.ResultSet, error) {
 	switch stmt.Tp {
 	case ast.ShowDatabases:
-		databases := q.ns.Frontend().ListDatabases()
+		databases := q.ns.ListDatabases()
 		result, err := createShowDatabasesResult(databases)
 		if err != nil {
 			return nil, err
@@ -130,7 +130,7 @@ func (q *QueryCtxImpl) executeInTxnConn(ctx context.Context, sql string, stmtNod
 }
 
 func (q *QueryCtxImpl) executeInNoTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
-	conn, err := q.ns.Backend().GetPooledConn(ctx)
+	conn, err := q.ns.GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (q *QueryCtxImpl) executeInBackendConn(ctx context.Context, conn PooledBack
 }
 
 func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
-	if !q.ns.Frontend().IsDatabaseAllowed(db) {
+	if !q.ns.IsDatabaseAllowed(db) {
 		return mysql.NewErrf(mysql.ErrDBaccessDenied, "db %s access denied", db)
 	}
 	q.currentDB = db
@@ -267,7 +267,7 @@ func (q *QueryCtxImpl) initTxnConn(ctx context.Context) error {
 	if q.txnConn != nil {
 		return nil
 	}
-	conn, err := q.ns.Backend().GetPooledConn(ctx)
+	conn, err := q.ns.GetPooledConn(ctx)
 	if err != nil {
 		return err
 	}

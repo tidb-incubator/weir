@@ -121,7 +121,7 @@ func (*QueryCtxImpl) GetStatement(stmtID int) server.PreparedStatement {
 }
 
 func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error) {
-	conn, err := q.ns.Backend().GetPooledConn(context.Background())
+	conn, err := q.ns.GetPooledConn(context.Background())
 	if err != nil {
 		return nil, err
 	}
