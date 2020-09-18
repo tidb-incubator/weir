@@ -21,21 +21,26 @@ func (q *QueryCtxImpl) execute(ctx context.Context, sql string) ([]server.Result
 		return nil, err
 	}
 
+	if q.isStmtDenied(ctx, sql, stmt) {
+		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
+	}
+
 	return q.executeStmt(ctx, sql, stmt)
 }
 
-// TODO: implement this function
+// TODO(eastfisher): implement this function
+func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sql string, stmtNode ast.StmtNode) bool {
+	return false
+}
+
 func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
 	switch stmt := stmtNode.(type) {
 	case *ast.SetStmt:
 		return nil, q.setVariable(ctx, stmt)
 	case *ast.UseStmt:
-		err := q.useDB(ctx, stmt.DBName)
-		return nil, err
+		return nil, q.useDB(ctx, stmt.DBName)
 	case *ast.ShowStmt:
 		return q.executeShowStmt(ctx, sql, stmt)
-	case *ast.SelectStmt:
-		return q.executeInBackend(ctx, sql, stmtNode)
 	case *ast.BeginStmt:
 		return nil, q.begin(ctx)
 	case *ast.CommitStmt:
@@ -43,11 +48,10 @@ func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast
 	case *ast.RollbackStmt:
 		return nil, q.commitOrRollback(ctx, false)
 	default:
-		return nil, mysql.NewErrf(mysql.ErrUnknown, "stmt %T not supported now", stmtNode)
+		return q.executeInBackend(ctx, sql, stmtNode)
 	}
 }
 
-// TODO: implement this function
 func (q *QueryCtxImpl) executeShowStmt(ctx context.Context, sql string, stmt *ast.ShowStmt) ([]server.ResultSet, error) {
 	switch stmt.Tp {
 	case ast.ShowDatabases:
@@ -57,10 +61,8 @@ func (q *QueryCtxImpl) executeShowStmt(ctx context.Context, sql string, stmt *as
 			return nil, err
 		}
 		return []server.ResultSet{wrapMySQLResult(result)}, nil
-	case ast.ShowTables:
-		return q.executeInBackend(ctx, sql, stmt)
 	default:
-		return nil, mysql.NewErrf(mysql.ErrUnknown, "show type %v not supported now", stmt.Tp)
+		return q.executeInBackend(ctx, sql, stmt)
 	}
 }
 
@@ -165,6 +167,7 @@ func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
 	return nil
 }
 
+// TODO(eastfisher): currently set variable only support AutoCommit
 func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error {
 	for _, v := range stmt.Variables {
 		switch strings.ToLower(v.Name) {
