@@ -1,6 +1,7 @@
 package namespace
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -20,13 +21,13 @@ type NamespaceManagerImpl struct {
 	users *sync2.Toggle
 }
 
-type NamespaceImpl struct {
+type NamespaceWrapper struct {
 	nsmgr *NamespaceManagerImpl
 	name  string
 }
 
-type FrontendBuilder func(cfg *config.FrontendNamespace) (driver.Frontend, error)
-type BackendBuilder func(cfg *config.BackendNamespace) (driver.Backend, error)
+type FrontendBuilder func(cfg *config.FrontendNamespace) (Frontend, error)
+type BackendBuilder func(cfg *config.BackendNamespace) (Backend, error)
 
 func CreateNamespaceManagerImpl(
 	cfgs []*config.Namespace, frontendBuilder FrontendBuilder, backendBuilder BackendBuilder,
@@ -57,8 +58,8 @@ func CreateNamespaceManagerImpl(
 	return ns, nil
 }
 
-func NewNamespaceImpl(nsmgr *NamespaceManagerImpl, ns string) *NamespaceImpl {
-	return &NamespaceImpl{
+func NewNamespaceImpl(nsmgr *NamespaceManagerImpl, ns string) *NamespaceWrapper {
+	return &NamespaceWrapper{
 		nsmgr: nsmgr,
 		name:  ns,
 	}
@@ -81,7 +82,7 @@ func createBackends(cfgs []*config.Namespace, buildBackend BackendBuilder,
 	defer func() {
 		if err != nil {
 			for _, b := range backendValues {
-				b.(driver.Backend).Close()
+				b.(Backend).Close()
 			}
 		}
 	}()
@@ -108,7 +109,7 @@ func (n *NamespaceManagerImpl) Auth(username string, pwd, salt []byte) (driver.N
 	if !ok {
 		return nil, false
 	}
-	if ok := fe.(driver.Frontend).Auth(username, pwd, salt); !ok {
+	if ok := fe.(Frontend).Auth(username, pwd, salt); !ok {
 		return nil, false
 	}
 
@@ -133,20 +134,20 @@ func (n *NamespaceManagerImpl) getNamespace(username string) (string, bool) {
 	return n.users.Current().(*UserNamespaceMapper).GetUserNamespace(username)
 }
 
-func (n *NamespaceManagerImpl) getFrontend(namespace string) (driver.Frontend, bool) {
+func (n *NamespaceManagerImpl) mustGetFrontend(namespace string) Frontend {
 	i, ok := n.frontends.Get(namespace)
 	if !ok {
-		return nil, false
+		panic(ErrNamespaceNotFound)
 	}
-	return i.(driver.Frontend), true
+	return i.(Frontend)
 }
 
-func (n *NamespaceManagerImpl) getBackend(namespace string) (driver.Backend, bool) {
+func (n *NamespaceManagerImpl) mustGetBackend(namespace string) Backend {
 	i, ok := n.backends.Get(namespace)
 	if !ok {
-		return nil, false
+		panic(ErrNamespaceNotFound)
 	}
-	return i.(driver.Backend), true
+	return i.(Backend)
 }
 
 func (n *NamespaceManagerImpl) PrepareReloadBackend(namespace string, cfg *config.BackendNamespace) error {
@@ -269,25 +270,27 @@ func (n *NamespaceManagerImpl) RemoveNamespace(name string) error {
 	return nil
 }
 
-func (n *NamespaceImpl) Name() string {
+func DefaultCloseBackendFunc(b interface{}) {
+	b.(Backend).Close()
+}
+
+func (n *NamespaceWrapper) Name() string {
 	return n.name
 }
 
-func (n *NamespaceImpl) Frontend() driver.Frontend {
-	fe, _ := n.nsmgr.getFrontend(n.name)
-	return fe
+func (n *NamespaceWrapper) IsDatabaseAllowed(db string) bool {
+	return n.nsmgr.mustGetFrontend(n.name).IsDatabaseAllowed(db)
 }
 
-func (n *NamespaceImpl) Backend() driver.Backend {
-	be, _ := n.nsmgr.getBackend(n.name)
-	return be
+func (n *NamespaceWrapper) ListDatabases() []string {
+	return n.nsmgr.mustGetFrontend(n.name).ListDatabases()
 }
 
-func (n *NamespaceImpl) Closed() bool {
+func (n *NamespaceWrapper) GetPooledConn(ctx context.Context) (driver.PooledBackendConn, error) {
+	return n.nsmgr.mustGetBackend(n.name).GetPooledConn(ctx)
+}
+
+func (n *NamespaceWrapper) Closed() bool {
 	_, ok := n.nsmgr.frontends.Get(n.name)
 	return !ok
-}
-
-func DefaultCloseBackendFunc(b interface{}) {
-	b.(driver.Backend).Close()
 }
