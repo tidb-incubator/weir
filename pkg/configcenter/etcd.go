@@ -1,0 +1,113 @@
+package configcenter
+
+import (
+	"context"
+	"fmt"
+	"path"
+	"time"
+
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/pingcap-incubator/weir/pkg/config"
+	"github.com/pingcap/tidb/util/logutil"
+	"go.uber.org/zap"
+)
+
+const (
+	DefaultEtcdDialTimeout = 3 * time.Second
+)
+
+type EtcdConfigCenter struct {
+	etcdClient  *clientv3.Client
+	kv          clientv3.KV
+	basePath    string
+	strictParse bool
+}
+
+func CreateEtcdConfigCenter(cfg config.ConfigEtcd) (*EtcdConfigCenter, error) {
+	etcdConfig := clientv3.Config{
+		Endpoints:   cfg.Addrs,
+		Username:    cfg.Username,
+		Password:    cfg.Password,
+		DialTimeout: DefaultEtcdDialTimeout,
+	}
+	etcdClient, err := clientv3.New(etcdConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	center := NewEtcdConfigCenter(etcdClient, cfg.BasePath, cfg.StrictParse)
+	return center, nil
+}
+
+func NewEtcdConfigCenter(etcdClient *clientv3.Client, basePath string, strictParse bool) *EtcdConfigCenter {
+	return &EtcdConfigCenter{
+		etcdClient:  etcdClient,
+		kv:          clientv3.NewKV(etcdClient),
+		basePath:    basePath,
+		strictParse: strictParse,
+	}
+}
+
+func (e *EtcdConfigCenter) get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
+	resp, err := e.kv.Get(ctx, getNamespacePath(e.basePath, key))
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Kvs) == 0 {
+		return nil, fmt.Errorf("key not found")
+	}
+	return resp.Kvs[0], nil
+}
+
+func (e *EtcdConfigCenter) list(ctx context.Context) ([]*mvccpb.KeyValue, error) {
+	resp, err := e.kv.Get(ctx, e.basePath, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	return resp.Kvs, nil
+}
+
+func (e *EtcdConfigCenter) GetNamespace(ns string) (*config.Namespace, error) {
+	ctx := context.Background()
+	etcdKeyValue, err := e.get(ctx, ns)
+	if err != nil {
+		return nil, err
+	}
+
+	return config.UnmarshalNamespaceConfig(etcdKeyValue.Value)
+}
+
+func (e *EtcdConfigCenter) ListAllNamespace() ([]*config.Namespace, error) {
+	ctx := context.Background()
+	etcdKeyValues, err := e.list(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*config.Namespace
+	for _, kv := range etcdKeyValues {
+		nsCfg, err := config.UnmarshalNamespaceConfig(kv.Value)
+		if err != nil {
+			if e.strictParse {
+				return nil, err
+			} else {
+				logutil.BgLogger().Warn("parse namespace config error", zap.Error(err), zap.ByteString("namespace", kv.Key))
+				continue
+			}
+		}
+		ret = append(ret, nsCfg)
+	}
+
+	return ret, nil
+}
+
+func (e *EtcdConfigCenter) Close() {
+	if err := e.etcdClient.Close(); err != nil {
+		logutil.BgLogger().Error("close etcd client error", zap.Error(err))
+	}
+}
+
+func getNamespacePath(basePath, ns string) string {
+	return path.Join(basePath, ns)
+}

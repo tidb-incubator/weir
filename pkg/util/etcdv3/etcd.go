@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/etcd-io/etcd/clientv3"
 	"github.com/pingcap/errors"
 )
 
