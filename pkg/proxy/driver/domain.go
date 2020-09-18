@@ -12,7 +12,6 @@ type NamespaceManager interface {
 
 type Namespace interface {
 	Name() string
-	Auth(username string, pwd, salt []byte) bool
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
 	GetPooledConn(context.Context) (PooledBackendConn, error)
