@@ -12,21 +12,10 @@ type NamespaceManager interface {
 
 type Namespace interface {
 	Name() string
-	Frontend() Frontend
-	Backend() Backend
-	Closed() bool
-}
-
-type Backend interface {
-	GetConn(context.Context) (BackendConn, error)
-	GetPooledConn(context.Context) (PooledBackendConn, error)
-	Close()
-}
-
-type Frontend interface {
 	Auth(username string, pwd, salt []byte) bool
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
+	GetPooledConn(context.Context) (PooledBackendConn, error)
 }
 
 type PooledBackendConn interface {
