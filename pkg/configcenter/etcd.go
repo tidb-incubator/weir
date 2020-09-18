@@ -62,7 +62,8 @@ func (e *EtcdConfigCenter) get(ctx context.Context, key string) (*mvccpb.KeyValu
 }
 
 func (e *EtcdConfigCenter) list(ctx context.Context) ([]*mvccpb.KeyValue, error) {
-	resp, err := e.kv.Get(ctx, e.basePath, clientv3.WithPrefix())
+	baseDir := appendSlashToDirPath(e.basePath)
+	resp, err := e.kv.Get(ctx, baseDir, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -111,4 +112,15 @@ func (e *EtcdConfigCenter) Close() {
 
 func getNamespacePath(basePath, ns string) string {
 	return path.Join(basePath, ns)
+}
+
+// avoid base dir path prefix equal
+func appendSlashToDirPath(dir string) string {
+	if len(dir) == 0 {
+		return ""
+	}
+	if dir[len(dir)-1] == '/' {
+		return dir
+	}
+	return dir + "/"
 }
