@@ -5,11 +5,10 @@ import (
 
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
-	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	"github.com/pingcap-incubator/weir/pkg/util/datastructure"
 )
 
-func BuildBackend(cfg *config.BackendNamespace) (driver.Backend, error) {
+func BuildBackend(cfg *config.BackendNamespace) (Backend, error) {
 	bcfg, err := parseBackendConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -23,7 +22,7 @@ func BuildBackend(cfg *config.BackendNamespace) (driver.Backend, error) {
 	return b, nil
 }
 
-func BuildFrontend(cfg *config.FrontendNamespace) (driver.Frontend, error) {
+func BuildFrontend(cfg *config.FrontendNamespace) (Frontend, error) {
 	fns := &FrontendNamespace{
 		allowedDBs: cfg.AllowedDBs,
 	}
