@@ -6,13 +6,13 @@ LDFLAGS ?=
 export GOBIN := $(TOOL_BIN_PATH)
 export PATH := $(TOOL_BIN_PATH):$(PATH)
 
-default: weir-proxy
+default: weirproxy
 
-weir-proxy:
+weirproxy:
 ifeq ("$(WITH_RACE)", "1")
-	go build -race -gcflags '$(GCFLAGS)' -ldflags '$(LDFLAGS)' -tags '${BUILD_TAGS}' -o bin/weir-proxy cmd/weir-proxy/main.go
+	go build -race -gcflags '$(GCFLAGS)' -ldflags '$(LDFLAGS)' -tags '${BUILD_TAGS}' -o bin/weirproxy cmd/weirproxy/main.go
 else
-	go build -gcflags '$(GCFLAGS)' -ldflags '$(LDFLAGS)' -tags '${BUILD_TAGS}' -o bin/weir-proxy cmd/weir-proxy/main.go
+	go build -gcflags '$(GCFLAGS)' -ldflags '$(LDFLAGS)' -tags '${BUILD_TAGS}' -o bin/weirproxy cmd/weirproxy/main.go
 endif
 
 go-test:

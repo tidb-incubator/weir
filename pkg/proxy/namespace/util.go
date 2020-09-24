@@ -98,7 +98,7 @@ func (t *ToggleMapWrapper) Remove(name string) error {
 		return ErrNamespaceNotFound
 	}
 
-	t.handleClose(v)
+	t.handleClose(v.Current())
 	delete(t.m, name)
 	return nil
 }
@@ -108,6 +108,6 @@ func (t *ToggleMapWrapper) Close() {
 	defer t.Unlock()
 
 	for _, v := range t.m {
-		t.handleClose(v)
+		t.handleClose(v.Current())
 	}
 }
