@@ -3,6 +3,7 @@ package namespace
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
@@ -17,6 +18,8 @@ type NamespaceManagerImpl struct {
 
 	frontends     *ToggleMapWrapper
 	buildFrontend FrontendBuilder
+
+	namespaceSet *sync.Map
 
 	users *sync2.Toggle
 }
@@ -48,12 +51,15 @@ func CreateNamespaceManagerImpl(
 		return nil, errors.WithMessage(ErrInitBackend, err.Error())
 	}
 
+	nsSet := createNamespaceSet(cfgs)
+
 	ns := &NamespaceManagerImpl{
 		backends:      backends,
 		frontends:     frontends,
 		buildBackend:  backendBuilder,
 		buildFrontend: frontendBuilder,
 		users:         users,
+		namespaceSet:  nsSet,
 	}
 	return ns, nil
 }
@@ -97,6 +103,14 @@ func createBackends(cfgs []*config.Namespace, buildBackend BackendBuilder,
 	}
 
 	return NewToggleMapWrapper(backendValues, delay, closeBackend), nil
+}
+
+func createNamespaceSet(cfgs []*config.Namespace) *sync.Map {
+	set := &sync.Map{}
+	for _, cfg := range cfgs {
+		set.Store(cfg.Namespace, struct{}{})
+	}
+	return set
 }
 
 func (n *NamespaceManagerImpl) Auth(username string, pwd, salt []byte) (driver.Namespace, bool) {
@@ -203,7 +217,7 @@ func (n *NamespaceManagerImpl) CommitReloadFrontend(namespace string) error {
 
 func (n *NamespaceManagerImpl) CreateNamespace(cfg *config.Namespace) error {
 	ns := cfg.Namespace
-	if _, ok := n.frontends.Get(ns); ok {
+	if _, ok := n.namespaceSet.Load(cfg.Namespace); ok {
 		return ErrDuplicatedNamespace
 	}
 
@@ -243,10 +257,16 @@ func (n *NamespaceManagerImpl) CreateNamespace(cfg *config.Namespace) error {
 		return errCommit
 	}
 
+	n.namespaceSet.Store(cfg.Namespace, struct{}{})
+
 	return nil
 }
 
 func (n *NamespaceManagerImpl) RemoveNamespace(name string) error {
+	if _, ok := n.namespaceSet.Load(name); !ok {
+		return ErrNamespaceNotFound
+	}
+
 	var errStr string
 	users := n.users.Current().(*UserNamespaceMapper).Clone()
 	users.RemoveNamespaceUsers(name)
@@ -263,6 +283,8 @@ func (n *NamespaceManagerImpl) RemoveNamespace(name string) error {
 	if err := n.backends.Remove(name); err != nil {
 		errStr += err.Error()
 	}
+
+	n.namespaceSet.Delete(name)
 
 	if errStr != "" {
 		return errors.New(errStr)
