@@ -293,7 +293,9 @@ func (n *NamespaceManagerImpl) RemoveNamespace(name string) error {
 }
 
 func DefaultCloseBackendFunc(b interface{}) {
-	b.(Backend).Close()
+	if backend, ok := b.(Backend); ok {
+		backend.Close()
+	}
 }
 
 func (n *NamespaceWrapper) Name() string {

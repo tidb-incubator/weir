@@ -10,7 +10,6 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/configcenter"
 	"github.com/pingcap-incubator/weir/pkg/proxy/namespace"
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
-	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
 )
@@ -146,6 +145,7 @@ func (n *NamespaceHttpHandler) HandleCreateNamespace(c *gin.Context) {
 		return
 	}
 
+	logutil.BgLogger().Info("create namespace success", zap.String("namespace", ns))
 	c.JSON(http.StatusOK, CreateSuccessJsonResp())
 }
 
@@ -162,6 +162,7 @@ func (n *NamespaceHttpHandler) HandleRemoveNamespace(c *gin.Context) {
 		return
 	}
 
+	logutil.BgLogger().Info("remove namespace success", zap.String("namespace", ns))
 	c.JSON(http.StatusOK, CreateSuccessJsonResp())
 }
 
@@ -180,38 +181,49 @@ func (n *NamespaceHttpHandler) HandlePrepareReload(c *gin.Context) {
 
 	reloadType, err := strconv.Atoi(reloadTypeStr)
 	if err != nil || !isValidReloadType(reloadType) {
-		c.JSON(http.StatusOK, CreateJsonResp(http.StatusBadRequest,"invalid reload type"))
+		c.JSON(http.StatusOK, CreateJsonResp(http.StatusBadRequest, "invalid reload type"))
 		return
 	}
 
 	nscfg, err := n.cfgCenter.GetNamespace(ns)
 	if err != nil {
-		c.JSON(http.StatusOK, errors.WithMessage(err, "get namespace value from configcenter error"))
+		errMsg := "get namespace value from configcenter error"
+		logutil.BgLogger().Error(errMsg, zap.Error(err))
+		c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 		return
 	}
 
 	if reloadType == ReloadTypeFrontend {
 		if err := n.nsmgr.PrepareReloadFrontend(ns, &nscfg.Frontend); err != nil {
-			c.JSON(http.StatusOK, errors.WithMessage(err, "prepare reload frontend namespace error"))
+			errMsg := "prepare reload frontend namespace error"
+			logutil.BgLogger().Error(errMsg, zap.Error(err))
+			c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 			return
 		}
 	} else if reloadType == ReloadTypeBackend {
 		if err := n.nsmgr.PrepareReloadBackend(ns, &nscfg.Backend); err != nil {
-			c.JSON(http.StatusOK, errors.WithMessage(err, "prepare reload backend namespace error"))
+			errMsg := "prepare reload backend namespace error"
+			logutil.BgLogger().Error(errMsg, zap.Error(err))
+			c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 			return
 		}
 	} else if reloadType == ReloadTypeAll {
 		if err := n.nsmgr.PrepareReloadFrontend(ns, &nscfg.Frontend); err != nil {
-			c.JSON(http.StatusOK, errors.WithMessage(err, "prepare reload frontend namespace error"))
+			errMsg := "prepare reload frontend namespace error"
+			logutil.BgLogger().Error(errMsg, zap.Error(err))
+			c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 			return
 		}
 		if err := n.nsmgr.PrepareReloadBackend(ns, &nscfg.Backend); err != nil {
-			c.JSON(http.StatusOK, errors.WithMessage(err, "prepare reload backend namespace error"))
+			errMsg := "prepare reload backend namespace error"
+			logutil.BgLogger().Error(errMsg, zap.Error(err))
+			c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 			return
 		}
 	}
 
-	c.JSON(http.StatusOK, "OK")
+	logutil.BgLogger().Info("prepare reload success", zap.Int("reloadType", reloadType), zap.String("namespace", ns))
+	c.JSON(http.StatusOK, CreateSuccessJsonResp())
 }
 
 func (n *NamespaceHttpHandler) HandleCommitReload(c *gin.Context) {
@@ -229,36 +241,45 @@ func (n *NamespaceHttpHandler) HandleCommitReload(c *gin.Context) {
 
 	reloadType, err := strconv.Atoi(reloadTypeStr)
 	if err != nil || !isValidReloadType(reloadType) {
-		c.JSON(http.StatusOK, CreateJsonResp(http.StatusBadRequest,"invalid reload type"))
+		c.JSON(http.StatusOK, CreateJsonResp(http.StatusBadRequest, "invalid reload type"))
 		return
 	}
 
 	if reloadType == ReloadTypeFrontend {
 		if err := n.nsmgr.CommitReloadFrontend(ns); err != nil {
-			c.JSON(http.StatusOK, errors.WithMessage(err, "commit reload frontend namespace error"))
+			errMsg := "commit reload frontend namespace error"
+			logutil.BgLogger().Error(errMsg, zap.Error(err))
+			c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 			return
 		}
 	} else if reloadType == ReloadTypeBackend {
 		if err := n.nsmgr.CommitReloadBackend(ns); err != nil {
-			c.JSON(http.StatusOK, errors.WithMessage(err, "commit reload backend namespace error"))
+			errMsg := "commit reload backend namespace error"
+			logutil.BgLogger().Error(errMsg, zap.Error(err))
+			c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 			return
 		}
 	} else if reloadType == ReloadTypeAll {
 		if err := n.nsmgr.CommitReloadFrontend(ns); err != nil {
-			c.JSON(http.StatusOK, errors.WithMessage(err, "commit reload frontend namespace error"))
+			errMsg := "commit reload frontend namespace error"
+			logutil.BgLogger().Error(errMsg, zap.Error(err))
+			c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 			return
 		}
 		if err := n.nsmgr.CommitReloadBackend(ns); err != nil {
-			c.JSON(http.StatusOK, errors.WithMessage(err, "commit reload backend namespace error"))
+			errMsg := "commit reload backend namespace error"
+			logutil.BgLogger().Error(errMsg, zap.Error(err))
+			c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 			return
 		}
 	}
 
-	c.JSON(http.StatusOK, "OK")
+	logutil.BgLogger().Info("commit reload success", zap.Int("reloadType", reloadType), zap.String("namespace", ns))
+	c.JSON(http.StatusOK, CreateSuccessJsonResp())
 }
 
 func isValidReloadType(t int) bool {
-	return t == ReloadTypeFrontend || t == ReloadTypeBackend
+	return t == ReloadTypeFrontend || t == ReloadTypeBackend || t == ReloadTypeAll
 }
 
 func CreateJsonResp(code int, msg string) CommonJsonResp {
