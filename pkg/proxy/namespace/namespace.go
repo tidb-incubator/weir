@@ -100,7 +100,7 @@ func createBackends(cfgs []*config.Namespace, buildBackend BackendBuilder,
 }
 
 func (n *NamespaceManagerImpl) Auth(username string, pwd, salt []byte) (driver.Namespace, bool) {
-	ns, ok := n.getNamespace(username)
+	ns, ok := n.getNamespaceByUsername(username)
 	if !ok {
 		return nil, false
 	}
@@ -130,7 +130,7 @@ func createFrontends(cfgs []*config.Namespace, buildFrontend FrontendBuilder) (*
 	return NewToggleMapWrapperWithoutCloseFunc(frontendValues), nil
 }
 
-func (n *NamespaceManagerImpl) getNamespace(username string) (string, bool) {
+func (n *NamespaceManagerImpl) getNamespaceByUsername(username string) (string, bool) {
 	return n.users.Current().(*UserNamespaceMapper).GetUserNamespace(username)
 }
 
