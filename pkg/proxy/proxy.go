@@ -72,6 +72,10 @@ func (p *Proxy) Run() error {
 }
 
 func (p *Proxy) Close() {
-	p.apiServer.Close()
-	p.svr.Close()
+	if p.apiServer != nil {
+		p.apiServer.Close()
+	}
+	if p.svr != nil {
+		p.svr.Close()
+	}
 }
