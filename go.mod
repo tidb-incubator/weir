@@ -3,6 +3,7 @@ module github.com/pingcap-incubator/weir
 go 1.14
 
 require (
+	github.com/gin-gonic/gin v1.5.0
 	github.com/goccy/go-yaml v1.8.2
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pingcap/check v0.0.0-20200212061837-5e12011dc712
