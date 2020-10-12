@@ -3,6 +3,7 @@ package namespace
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
@@ -85,4 +86,16 @@ func (n *NamespaceWrapper) mustGetCurrentNamespace() Namespace {
 		panic(errors.New("namespace not found"))
 	}
 	return ns
+}
+
+func DefaultAsyncCloseNamespace(ns Namespace) error {
+	nsWrapper, ok := ns.(*NsWrapper)
+	if !ok {
+		return errors.Errorf("invalid namespace type: %T", ns)
+	}
+	go func() {
+		time.Sleep(30 * time.Second)
+		nsWrapper.Backend.Close()
+	}()
+	return nil
 }
