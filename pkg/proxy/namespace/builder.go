@@ -9,7 +9,7 @@ import (
 	"github.com/pingcap/errors"
 )
 
-type NsWrapper struct {
+type NamespaceImpl struct {
 	name string
 	Backend
 	Frontend
@@ -25,7 +25,7 @@ func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
 		return nil, errors.WithMessage(err, "build frontend error")
 	}
 
-	wrapper := &NsWrapper{
+	wrapper := &NamespaceImpl{
 		name:     cfg.Namespace,
 		Backend:  be,
 		Frontend: fe,
@@ -33,7 +33,7 @@ func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
 	return wrapper, nil
 }
 
-func (n *NsWrapper) Name() string {
+func (n *NamespaceImpl) Name() string {
 	return n.name
 }
 
@@ -86,4 +86,16 @@ func parseBackendConfig(cfg *config.BackendNamespace) (*backend.BackendConfig, e
 		SelectorType: selectorType,
 	}
 	return bcfg, nil
+}
+
+func DefaultAsyncCloseNamespace(ns Namespace) error {
+	nsWrapper, ok := ns.(*NamespaceImpl)
+	if !ok {
+		return errors.Errorf("invalid namespace type: %T", ns)
+	}
+	go func() {
+		time.Sleep(30 * time.Second)
+		nsWrapper.Backend.Close()
+	}()
+	return nil
 }
