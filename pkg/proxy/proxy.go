@@ -10,13 +10,11 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 )
 
-const defaultCloseBackendDuration = 30 * time.Second
-
 type Proxy struct {
 	cfg          *config.Proxy
 	svr          *server.Server
 	apiServer    *HttpApiServer
-	nsmgr        *namespace.NamespaceManagerImpl
+	nsmgr        *namespace.NamespaceManager
 	configCenter configcenter.ConfigCenter
 }
 
@@ -38,9 +36,7 @@ func (p *Proxy) Init() error {
 		return err
 	}
 
-	nsmgr, err := namespace.CreateNamespaceManagerImpl(
-		nss, namespace.BuildFrontend, namespace.BuildBackend,
-		defaultCloseBackendDuration, namespace.DefaultCloseBackendFunc)
+	nsmgr, err := namespace.CreateNamespaceManager(nss, namespace.BuildNamespace, namespace.DefaultAsyncCloseNamespace)
 	if err != nil {
 		return err
 	}

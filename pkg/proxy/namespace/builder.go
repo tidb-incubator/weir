@@ -6,7 +6,36 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
 	"github.com/pingcap-incubator/weir/pkg/util/datastructure"
+	"github.com/pingcap/errors"
 )
+
+type NamespaceImpl struct {
+	name string
+	Backend
+	Frontend
+}
+
+func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
+	be, err := BuildBackend(&cfg.Backend)
+	if err != nil {
+		return nil, errors.WithMessage(err, "build backend error")
+	}
+	fe, err := BuildFrontend(&cfg.Frontend)
+	if err != nil {
+		return nil, errors.WithMessage(err, "build frontend error")
+	}
+
+	wrapper := &NamespaceImpl{
+		name:     cfg.Namespace,
+		Backend:  be,
+		Frontend: fe,
+	}
+	return wrapper, nil
+}
+
+func (n *NamespaceImpl) Name() string {
+	return n.name
+}
 
 func BuildBackend(cfg *config.BackendNamespace) (Backend, error) {
 	bcfg, err := parseBackendConfig(cfg)
@@ -57,4 +86,16 @@ func parseBackendConfig(cfg *config.BackendNamespace) (*backend.BackendConfig, e
 		SelectorType: selectorType,
 	}
 	return bcfg, nil
+}
+
+func DefaultAsyncCloseNamespace(ns Namespace) error {
+	nsWrapper, ok := ns.(*NamespaceImpl)
+	if !ok {
+		return errors.Errorf("invalid namespace type: %T", ns)
+	}
+	go func() {
+		time.Sleep(30 * time.Second)
+		nsWrapper.Backend.Close()
+	}()
+	return nil
 }
