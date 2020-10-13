@@ -45,10 +45,20 @@ type Registry struct {
 type ConfigCenter struct {
 	Type       string     `yaml:"type"`
 	ConfigFile ConfigFile `yaml:"config_file"`
+	ConfigEtcd ConfigEtcd `yaml:"config_etcd"`
 }
 
 type ConfigFile struct {
 	Path string `yaml:"path"`
+}
+
+type ConfigEtcd struct {
+	Addrs    []string `yaml:"addrs"`
+	BasePath string   `yaml:"base_path"`
+	Username string   `yaml:"username"`
+	Password string   `yaml:"password"`
+	// If strictParse is disabled, parsing namespace error will be ignored when list all namespaces.
+	StrictParse bool `yaml:"strict_parse"`
 }
 
 type Performance struct {
