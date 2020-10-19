@@ -11,6 +11,7 @@ import (
 	"github.com/pingcap/parser/auth"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util"
+	gomysql "github.com/siddontang/go-mysql/mysql"
 )
 
 // Server information.
@@ -97,7 +98,7 @@ func (q *QueryCtxImpl) CurrentDB() string {
 	return q.currentDB
 }
 
-func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result, error) {
 	return q.execute(ctx, sql)
 }
 

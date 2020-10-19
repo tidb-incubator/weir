@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
@@ -14,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (q *QueryCtxImpl) execute(ctx context.Context, sql string) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) execute(ctx context.Context, sql string) (*gomysql.Result, error) {
 	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
 	stmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
 	if err != nil {
@@ -33,7 +32,7 @@ func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sql string, stmtNode as
 	return false
 }
 
-func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
 	switch stmt := stmtNode.(type) {
 	case *ast.SetStmt:
 		return nil, q.setVariable(ctx, stmt)
@@ -52,15 +51,12 @@ func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast
 	}
 }
 
-func (q *QueryCtxImpl) executeShowStmt(ctx context.Context, sql string, stmt *ast.ShowStmt) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeShowStmt(ctx context.Context, sql string, stmt *ast.ShowStmt) (*gomysql.Result, error) {
 	switch stmt.Tp {
 	case ast.ShowDatabases:
 		databases := q.ns.ListDatabases()
 		result, err := createShowDatabasesResult(databases)
-		if err != nil {
-			return nil, err
-		}
-		return []server.ResultSet{wrapMySQLResult(result)}, nil
+		return result, err
 	default:
 		return q.executeInBackend(ctx, sql, stmt)
 	}
@@ -103,7 +99,7 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 	return result, nil
 }
 
-func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
 	if !q.isAutoCommit() || q.isInTransaction() {
 		return q.executeInTxnConn(ctx, sql, stmtNode)
 	} else {
@@ -111,7 +107,7 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 	}
 }
 
-func (q *QueryCtxImpl) executeInTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeInTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
 	q.txnLock.Lock()
 	defer q.txnLock.Unlock()
 
@@ -124,12 +120,12 @@ func (q *QueryCtxImpl) executeInTxnConn(ctx context.Context, sql string, stmtNod
 		return nil, err
 	}
 
-	var ret []server.ResultSet
+	var ret *gomysql.Result
 	ret, err = q.executeInBackendConn(ctx, q.txnConn, q.currentDB, sql, stmtNode)
 	return ret, err
 }
 
-func (q *QueryCtxImpl) executeInNoTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeInNoTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
 	conn, err := q.ns.GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
@@ -139,7 +135,7 @@ func (q *QueryCtxImpl) executeInNoTxnConn(ctx context.Context, sql string, stmtN
 	return q.executeInBackendConn(ctx, conn, q.currentDB, sql, stmtNode)
 }
 
-func (q *QueryCtxImpl) executeInBackendConn(ctx context.Context, conn PooledBackendConn, db string, sql string, stmtNode ast.StmtNode) ([]server.ResultSet, error) {
+func (q *QueryCtxImpl) executeInBackendConn(ctx context.Context, conn PooledBackendConn, db string, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
 	if err := conn.UseDB(db); err != nil {
 		return nil, err
 	}
@@ -155,8 +151,7 @@ func (q *QueryCtxImpl) executeInBackendConn(ctx context.Context, conn PooledBack
 		return nil, nil
 	}
 
-	resultSet := wrapMySQLResult(result)
-	return []server.ResultSet{resultSet}, nil
+	return result, nil
 }
 
 func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {

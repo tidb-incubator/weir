@@ -273,6 +273,7 @@ func convertFieldsToColumnInfos(fields []*gomysql.Field) []*ColumnInfo {
 		}
 		rets = append(rets, ret)
 	}
+	return rets
 }
 
 func (cc *clientConn) writeColumnInfo(columns []*ColumnInfo, serverStatus uint16) error {

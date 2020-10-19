@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb/types"
 	"github.com/pingcap/tidb/util"
 	"github.com/pingcap/tidb/util/chunk"
+	"github.com/siddontang/go-mysql/mysql"
 )
 
 // IDriver opens IContext.
@@ -67,7 +68,7 @@ type QueryCtx interface {
 	CurrentDB() string
 
 	// Execute executes a SQL statement.
-	Execute(ctx context.Context, sql string) ([]ResultSet, error)
+	Execute(ctx context.Context, sql string) (*mysql.Result, error)
 
 	// ExecuteInternal executes a internal SQL statement.
 	ExecuteInternal(ctx context.Context, sql string) ([]ResultSet, error)
