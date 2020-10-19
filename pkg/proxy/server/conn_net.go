@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb/util/chunk"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/pingcap/tidb/util/memory"
+	gomysql "github.com/siddontang/go-mysql/mysql"
 	"go.uber.org/zap"
 )
 
@@ -200,6 +201,78 @@ func (cc *clientConn) writeResultset(ctx context.Context, rs ResultSet, binary b
 	}
 
 	return cc.flush()
+}
+
+func (cc *clientConn) writeGoMySQLResultset(ctx context.Context, rs *gomysql.Resultset, binary bool, serverStatus uint16, fetchSize int) (runErr error) {
+	defer func() {
+		// close ResultSet when cursor doesn't exist
+		if !mysql.HasCursorExistsFlag(serverStatus) {
+			// TODO(eastfisher): close resultset
+		}
+		r := recover()
+		if r == nil {
+			return
+		}
+		if str, ok := r.(string); !ok || !strings.HasPrefix(str, memory.PanicMemoryExceed) {
+			panic(r)
+		}
+		// TODO(jianzhang.zj: add metrics here)
+		runErr = errors.Errorf("%v", r)
+		buf := make([]byte, 4096)
+		stackSize := runtime.Stack(buf, false)
+		buf = buf[:stackSize]
+		logutil.Logger(ctx).Error("write query result panic", zap.Stringer("lastSQL", getLastStmtInConn{cc}), zap.String("stack", string(buf)))
+	}()
+	var err error
+
+	if mysql.HasCursorExistsFlag(serverStatus) {
+		// TODO(eastfisher): writeChunksWithFetchSize
+	} else {
+		err = cc.writeGoMySQLChunks(ctx, rs, binary, serverStatus)
+	}
+	if err != nil {
+		return err
+	}
+
+	return cc.flush()
+}
+
+func (cc *clientConn) writeGoMySQLChunks(ctx context.Context, rs *gomysql.Resultset, binary bool, serverStatus uint16) error {
+	var err error
+	columns := convertFieldsToColumnInfos(rs.Fields)
+	err = cc.writeColumnInfo(columns, serverStatus)
+	if err != nil {
+		return err
+	}
+
+	data := cc.alloc.AllocWithLen(4, 1024)
+	for _, v := range rs.RowDatas {
+		// TODO(eastfisher): implement binary resultset
+		data = append(data, v...)
+		if err = cc.writePacket(data); err != nil {
+			return err
+		}
+	}
+	return cc.writeEOF(serverStatus)
+}
+
+func convertFieldsToColumnInfos(fields []*gomysql.Field) []*ColumnInfo {
+	var rets []*ColumnInfo
+	for _, f := range fields {
+		ret := &ColumnInfo{
+			Schema:             string(f.Schema),
+			Table:              string(f.Table),
+			OrgTable:           string(f.OrgTable),
+			Name:               string(f.Name),
+			OrgName:            string(f.OrgName),
+			Charset:            f.Charset,
+			ColumnLength:       f.ColumnLength,
+			Type:               f.Type,
+			DefaultValueLength: f.DefaultValueLength,
+			DefaultValue:       f.DefaultValue,
+		}
+		rets = append(rets, ret)
+	}
 }
 
 func (cc *clientConn) writeColumnInfo(columns []*ColumnInfo, serverStatus uint16) error {
