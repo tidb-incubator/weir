@@ -247,6 +247,7 @@ func (cc *clientConn) writeGoMySQLChunks(ctx context.Context, rs *gomysql.Result
 
 	data := cc.alloc.AllocWithLen(4, 1024)
 	for _, v := range rs.RowDatas {
+		data = data[0:4]
 		// TODO(eastfisher): implement binary resultset
 		data = append(data, v...)
 		if err = cc.writePacket(data); err != nil {
@@ -265,8 +266,10 @@ func convertFieldsToColumnInfos(fields []*gomysql.Field) []*ColumnInfo {
 			OrgTable:           string(f.OrgTable),
 			Name:               string(f.Name),
 			OrgName:            string(f.OrgName),
-			Charset:            f.Charset,
 			ColumnLength:       f.ColumnLength,
+			Charset:            f.Charset,
+			Flag:               f.Flag,
+			Decimal:            f.Decimal,
 			Type:               f.Type,
 			DefaultValueLength: f.DefaultValueLength,
 			DefaultValue:       f.DefaultValue,
