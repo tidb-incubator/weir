@@ -18,3 +18,5 @@ require (
 	go.uber.org/zap v1.15.0
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73
 )
+
+replace github.com/siddontang/go-mysql => github.com/ibanyu/go-mysql v1.1.0
