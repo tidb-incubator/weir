@@ -23,7 +23,6 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/parser/mysql"
-	"github.com/pingcap/parser/terror"
 	"github.com/pingcap/tidb/executor"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/sessionctx/variable"
@@ -152,17 +151,12 @@ func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 	}
 	status := atomic.LoadInt32(&cc.status)
 	if rss != nil && (status == connStatusShutdown || status == connStatusWaitShutdown) {
-		for _, rs := range rss {
-			terror.Call(rs.Close)
-		}
+		// TODO(eastfisher): close ResultSet
 		return executor.ErrQueryInterrupted
 	}
+
 	if rss != nil {
-		if len(rss) == 1 {
-			err = cc.writeResultset(ctx, rss[0], false, 0, 0)
-		} else {
-			err = cc.writeMultiResultset(ctx, rss, false)
-		}
+		err = cc.writeGoMySQLResultset(ctx, rss.Resultset, false, 0 ,0)
 	} else {
 		// (eastfisher)currently we does not support load data
 		err = cc.writeOK()
