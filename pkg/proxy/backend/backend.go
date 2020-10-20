@@ -114,7 +114,7 @@ func (b *BackendImpl) initConnPools() error {
 	return nil
 }
 
-func (b *BackendImpl) GetConn(ctx context.Context) (driver.BackendConn, error) {
+func (b *BackendImpl) GetConn(ctx context.Context) (driver.SimpleBackendConn, error) {
 	if b.closed.Get() {
 		return nil, ErrBackendClosed
 	}

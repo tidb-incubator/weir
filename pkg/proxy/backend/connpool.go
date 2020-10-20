@@ -2,11 +2,13 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	"github.com/pingcap-incubator/weir/pkg/util/pool"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
 )
@@ -85,6 +87,14 @@ func (c *ConnPool) Close() error {
 func (cw *backendPooledConnWrapper) PutBack() {
 	w := &noErrorCloseConnWrapper{cw}
 	cw.pool.Put(w)
+}
+
+func (cw *backendPooledConnWrapper) ErrorClose() error {
+	cw.pool.Put(nil)
+	if err := cw.Conn.Close(); err != nil {
+		return errors.WithMessage(err, fmt.Sprintf("close backend conn error, addr: %s, username: %s", cw.addr, cw.username))
+	}
+	return nil
 }
 
 func (cw *backendPooledConnWrapper) Close() error {

@@ -18,12 +18,21 @@ type Namespace interface {
 }
 
 type PooledBackendConn interface {
+	// PutBack put conn back to pool
 	PutBack()
+
+	// ErrorClose close conn and connpool create a new conn
+	// call this function when conn is broken.
+	ErrorClose() error
+	BackendConn
+}
+
+type SimpleBackendConn interface {
+	Close() error
 	BackendConn
 }
 
 type BackendConn interface {
-	Close() error
 	Ping() error
 	UseDB(dbName string) error
 	GetDB() string
