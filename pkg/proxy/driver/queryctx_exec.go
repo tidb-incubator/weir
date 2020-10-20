@@ -276,7 +276,7 @@ func (q *QueryCtxImpl) initTxnConn(ctx context.Context) error {
 func (q *QueryCtxImpl) postUseTxnConn(err error) {
 	if err != nil {
 		if q.txnConn != nil {
-			if errClose := q.txnConn.Close(); errClose != nil {
+			if errClose := q.txnConn.ErrorClose(); errClose != nil {
 				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", q.ns.Name()))
 			}
 			q.txnConn = nil
