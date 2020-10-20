@@ -228,7 +228,7 @@ func (cc *clientConn) writeGoMySQLResultset(ctx context.Context, rs *gomysql.Res
 	if mysql.HasCursorExistsFlag(serverStatus) {
 		// TODO(eastfisher): writeChunksWithFetchSize
 	} else {
-		err = cc.writeGoMySQLChunks(ctx, rs, binary, serverStatus)
+		err = cc.doWriteGoMySQLResultset(ctx, rs, binary, serverStatus)
 	}
 	if err != nil {
 		return err
@@ -237,7 +237,7 @@ func (cc *clientConn) writeGoMySQLResultset(ctx context.Context, rs *gomysql.Res
 	return cc.flush()
 }
 
-func (cc *clientConn) writeGoMySQLChunks(ctx context.Context, rs *gomysql.Resultset, binary bool, serverStatus uint16) error {
+func (cc *clientConn) doWriteGoMySQLResultset(ctx context.Context, rs *gomysql.Resultset, binary bool, serverStatus uint16) error {
 	var err error
 	columns := convertFieldsToColumnInfos(rs.Fields)
 	err = cc.writeColumnInfo(columns, serverStatus)
