@@ -197,34 +197,27 @@ func (c *Conn) FieldList(table string, wildcard string) ([]*Field, error) {
 	if err := c.writeCommandStrStr(COM_FIELD_LIST, table, wildcard); err != nil {
 		return nil, errors.Trace(err)
 	}
-
-	data, err := c.ReadPacket()
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-
 	fs := make([]*Field, 0, 4)
-	var f *Field
-	if data[0] == ERR_HEADER {
-		return nil, c.handleErrorPacket(data)
-	} else {
-		for {
-			if data, err = c.ReadPacket(); err != nil {
-				return nil, errors.Trace(err)
-			}
-
-			// EOF Packet
-			if c.isEOFPacket(data) {
-				return fs, nil
-			}
-
-			if f, err = FieldData(data).Parse(); err != nil {
-				return nil, errors.Trace(err)
-			}
-			fs = append(fs, f)
+	for {
+		data, err := c.ReadPacket()
+		if err != nil {
+			return nil, errors.Trace(err)
 		}
+		if data[0] == ERR_HEADER {
+			return nil, c.handleErrorPacket(data)
+		}
+
+		// EOF Packet
+		if c.isEOFPacket(data) {
+			break
+		}
+		f, err := FieldData(data).Parse()
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+		fs = append(fs, f)
 	}
-	return nil, fmt.Errorf("field list error")
+	return fs, nil
 }
 
 func (c *Conn) SetAutoCommit(autocommit bool) error {
