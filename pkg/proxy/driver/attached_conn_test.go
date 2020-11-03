@@ -110,7 +110,6 @@ func (a *AttachedConnTestSuite) Test_Begin_AutoCommit_Error_Begin() {
 	require.Nil(a.T(), a.mockHolder.txnConn)
 }
 
-// FIXME(eastfisher): expect no error, but currently return error
 func (a *AttachedConnTestSuite) Test_Commit_AutoCommit_WithoutBegin_Success() {
 	mockPooledBackendConn := new(MockPooledBackendConn)
 	mockPooledBackendConn.On("SetAutoCommit", true).Return(nil)
@@ -123,7 +122,6 @@ func (a *AttachedConnTestSuite) Test_Commit_AutoCommit_WithoutBegin_Success() {
 	require.Nil(a.T(), a.mockHolder.txnConn)
 }
 
-// FIXME(eastfisher): expect no error, but currently return error
 func (a *AttachedConnTestSuite) Test_Rollback_AutoCommit_WithoutBegin_Success() {
 	mockPooledBackendConn := new(MockPooledBackendConn)
 	mockPooledBackendConn.On("SetAutoCommit", true).Return(nil)

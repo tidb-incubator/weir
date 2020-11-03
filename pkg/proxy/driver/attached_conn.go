@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
@@ -115,9 +114,8 @@ func (a *AttachedConnHolder) CommitOrRollback(commit bool) error {
 	a.txnLock.Lock()
 	defer a.txnLock.Unlock()
 
-	if a.txnConn == nil {
-		a.setInTrans(false)
-		return errors.New("txn conn is not set")
+	if !a.isInTransaction() && a.txnConn == nil {
+		return nil
 	}
 
 	var err error
