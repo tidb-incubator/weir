@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	gomysql "github.com/siddontang/go-mysql/mysql"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -270,6 +272,50 @@ func (a *AttachedConnTestSuite) Test_AutoCommit_DisableSuccess_AndThen_EnableErr
 	require.EqualError(a.T(), err, mockError.Error())
 	mockPooledBackendConn.AssertCalled(a.T(), "ErrorClose")
 	require.Equal(a.T(), false, a.mockHolder.IsAutoCommit())
+	require.Equal(a.T(), false, a.mockHolder.IsInTransaction())
+	require.Nil(a.T(), a.mockHolder.txnConn)
+}
+
+func (a *AttachedConnTestSuite) Test_Begin_AndThen_ExecuteQuery_AndThen_Commit_Success_EnableAutoCommit() {
+	ctx := context.Background()
+
+	// begin
+	mockPooledBackendConn := new(MockPooledBackendConn)
+	mockPooledBackendConn.On("SetAutoCommit", true).Return(nil)
+	mockPooledBackendConn.On("Begin").Return(nil)
+	a.mockNs.On("GetPooledConn", ctx).Return(mockPooledBackendConn, nil)
+
+	err := a.mockHolder.Begin(ctx)
+	require.NoError(a.T(), err)
+	require.NotNil(a.T(), a.mockHolder.txnConn)
+	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
+	require.Equal(a.T(), true, a.mockHolder.IsInTransaction())
+
+	// execute
+	sql := "SELECT * FROM tbl1"
+	expectResult := &gomysql.Result{}
+	mockPooledBackendConn.On("Execute", sql).Return(expectResult, nil)
+
+	queryFunc := func(ctx context.Context, conn PooledBackendConn) (*gomysql.Result, error) {
+		return conn.Execute(sql)
+	}
+
+	ret, err := a.mockHolder.ExecuteQuery(ctx, queryFunc)
+	assert.NoError(a.T(), err)
+	assert.Equal(a.T(), expectResult, ret)
+	mockPooledBackendConn.AssertCalled(a.T(), "Execute", sql)
+	assert.NotNil(a.T(), a.mockHolder.txnConn)
+	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
+	require.Equal(a.T(), true, a.mockHolder.IsInTransaction())
+
+	// commit
+	mockPooledBackendConn.On("Commit").Return(nil)
+	mockPooledBackendConn.On("PutBack").Return()
+
+	err = a.mockHolder.CommitOrRollback(true)
+	require.NoError(a.T(), err)
+	mockPooledBackendConn.AssertCalled(a.T(), "PutBack")
+	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
 	require.Equal(a.T(), false, a.mockHolder.IsInTransaction())
 	require.Nil(a.T(), a.mockHolder.txnConn)
 }
