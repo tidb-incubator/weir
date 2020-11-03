@@ -165,33 +165,75 @@ func (a *AttachedConnHolder) isInTransaction() bool {
 
 func (a *AttachedConnHolder) postUseTxnConn(err error) {
 	if err != nil {
-		if a.txnConn != nil {
-			// TODO: if inTransaction, rollback and then close
-			if errClose := a.txnConn.ErrorClose(); errClose != nil {
-				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", a.ns.Name()))
-			}
-			a.txnConn = nil
-		}
-		a.setInTrans(false)
-	} else {
-		if a.isAutoCommit() && !a.isInTransaction() && a.txnConn != nil {
-			a.txnConn.PutBack()
-			a.txnConn = nil
-		}
+		a.errCloseConn()
+		return
+	}
+
+	if a.isAutoCommit() && !a.isInTransaction() {
+		a.normalPutBackConn()
 	}
 }
 
+func (a *AttachedConnHolder) errCloseConn() {
+	if a.txnConn != nil {
+		// TODO: if inTransaction, rollback and then close
+		if errClose := a.txnConn.ErrorClose(); errClose != nil {
+			logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", a.ns.Name()))
+		}
+		a.txnConn = nil
+	}
+	a.setInTrans(false)
+}
+
+func (a *AttachedConnHolder) normalPutBackConn() {
+	if a.txnConn == nil {
+		return
+	}
+	txnConn := a.txnConn
+	a.txnConn = nil
+	if !txnConn.IsAutoCommit() {
+		if errSet := txnConn.SetAutoCommit(true); errSet != nil {
+			logutil.BgLogger().Error("postUseTxnConn putback conn: set txn conn autocommit error, close", zap.Error(errSet), zap.String("namespace", a.ns.Name()))
+			if errClose := txnConn.ErrorClose(); errClose != nil {
+				logutil.BgLogger().Error("postUseTxnConn putback conn: close txn conn error", zap.Error(errClose), zap.String("namespace", a.ns.Name()))
+				return
+			}
+		}
+	}
+	txnConn.PutBack()
+}
+
 func (a *AttachedConnHolder) initTxnConn(ctx context.Context) error {
+	if err := a.trySetTxnConn(ctx); err != nil {
+		return err
+	}
+
+	if err := a.syncConnAutoCommit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *AttachedConnHolder) trySetTxnConn(ctx context.Context) error {
 	if a.txnConn != nil {
 		return nil
 	}
+
 	conn, err := a.ns.GetPooledConn(ctx)
 	if err != nil {
 		return err
 	}
 	a.txnConn = conn
-	if err := conn.SetAutoCommit(a.isAutoCommit()); err != nil {
-		return err
+	return nil
+}
+
+func (a *AttachedConnHolder) syncConnAutoCommit() error {
+	conn := a.txnConn
+	if a.isAutoCommit() != conn.IsAutoCommit() {
+		if err := conn.SetAutoCommit(a.isAutoCommit()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
