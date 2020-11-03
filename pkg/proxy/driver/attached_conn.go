@@ -33,17 +33,24 @@ func NewAttachedConnHolder(ns Namespace) *AttachedConnHolder {
 }
 
 func (a *AttachedConnHolder) MergeStatus(svw *SessionVarsWrapper) {
+	a.txnLock.Lock()
+	defer a.txnLock.Unlock()
+
 	svw.SetStatusFlag(mysql.ServerStatusInTrans, a.isInTransaction())
 	svw.SetStatusFlag(mysql.ServerStatusAutocommit, a.isAutoCommit())
 }
 
 func (a *AttachedConnHolder) IsInTransaction() bool {
-	// TODO: need lock?
+	a.txnLock.Lock()
+	defer a.txnLock.Unlock()
+
 	return a.isInTransaction()
 }
 
 func (a *AttachedConnHolder) IsAutoCommit() bool {
-	// TODO: need lock?
+	a.txnLock.Lock()
+	defer a.txnLock.Unlock()
+
 	return a.isAutoCommit()
 }
 
