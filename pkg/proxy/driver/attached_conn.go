@@ -168,6 +168,7 @@ func (a *AttachedConnHolder) isInTransaction() bool {
 func (a *AttachedConnHolder) postUseTxnConn(err error) {
 	if err != nil {
 		if a.txnConn != nil {
+			// TODO: if inTransaction, rollback and then close
 			if errClose := a.txnConn.ErrorClose(); errClose != nil {
 				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", a.ns.Name()))
 			}
