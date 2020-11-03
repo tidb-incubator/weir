@@ -68,7 +68,8 @@ func (a *AttachedConnHolder) SetAutoCommit(ctx context.Context, autocommit bool)
 	}()
 
 	a.setAutoCommit(autocommit)
-	return a.initTxnConn(ctx)
+	err = a.initTxnConn(ctx)
+	return err
 }
 
 func (a *AttachedConnHolder) Begin(ctx context.Context) error {
@@ -189,9 +190,9 @@ func (a *AttachedConnHolder) initTxnConn(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	a.txnConn = conn
 	if err := conn.SetAutoCommit(a.isAutoCommit()); err != nil {
 		return err
 	}
-	a.txnConn = conn
 	return nil
 }
