@@ -157,11 +157,13 @@ func (a *AttachedConnTestSuite) Test_Commit_AutoCommit_WithBegin_ErrorCommit() {
 	require.Equal(a.T(), true, a.mockHolder.IsInTransaction())
 	require.NotNil(a.T(), a.mockHolder.txnConn)
 
-	mockPooledBackendConn.On("Commit").Return(mockError)
-	mockPooledBackendConn.On("ErrorClose").Return(nil)
+	mockPooledBackendConn.On("Commit").Return(mockError).Once()
+	mockPooledBackendConn.On("ErrorClose").Return(nil).Once()
 
 	err = a.mockHolder.CommitOrRollback(true)
 	require.EqualError(a.T(), err, mockError.Error())
+	mockPooledBackendConn.AssertCalled(a.T(), "Commit")
+	mockPooledBackendConn.AssertCalled(a.T(), "ErrorClose")
 	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
 	require.Equal(a.T(), false, a.mockHolder.IsInTransaction())
 	require.Nil(a.T(), a.mockHolder.txnConn)
@@ -316,6 +318,7 @@ func (a *AttachedConnTestSuite) Test_Begin_AndThen_ExecuteQuery_AndThen_Commit_S
 
 	err = a.mockHolder.CommitOrRollback(true)
 	require.NoError(a.T(), err)
+	mockPooledBackendConn.AssertCalled(a.T(), "Commit")
 	mockPooledBackendConn.AssertCalled(a.T(), "PutBack")
 	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
 	require.Equal(a.T(), false, a.mockHolder.IsInTransaction())
