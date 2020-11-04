@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	"github.com/pingcap/errors"
 	. "github.com/siddontang/go-mysql/mysql"
 )
@@ -16,6 +17,10 @@ type Stmt struct {
 
 	params  int
 	columns int
+}
+
+func (s *Stmt) ID() int {
+	return int(s.id)
 }
 
 func (s *Stmt) ParamNum() int {
@@ -213,4 +218,24 @@ func (c *Conn) Prepare(query string) (*Stmt, error) {
 	}
 
 	return s, nil
+}
+
+func (c *Conn) StmtPrepare(query string) (driver.Stmt, error) {
+	stmt, err := c.Prepare(query)
+	if err != nil {
+		return nil, err
+	}
+	return driver.Stmt(stmt), nil
+}
+
+func (c *Conn) StmtExecuteForward(data []byte) (*Result, error) {
+	c.ResetSequence()
+	if err := c.WritePacket(data); err != nil {
+		return nil, errors.Trace(err)
+	}
+	return c.readResult(true)
+}
+
+func (c *Conn) StmtClosePrepare(stmtId int) error {
+	return c.writeCommandUint32(COM_STMT_CLOSE, uint32(stmtId))
 }

@@ -77,7 +77,11 @@ type QueryCtx interface {
 	SetClientCapability(uint32)
 
 	// Prepare prepares a statement.
-	Prepare(sql string) (stmtId int, columns, params []*ColumnInfo, err error)
+	Prepare(ctx context.Context, sql string) (stmtId int, columns, params []*ColumnInfo, err error)
+
+	StmtExecuteForward(stmtId int, data []byte) (*mysql.Result, error)
+
+	StmtClose(stmtId int) error
 
 	// FieldList returns columns of a table.
 	FieldList(tableName string) (columns []*ColumnInfo, err error)

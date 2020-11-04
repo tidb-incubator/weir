@@ -106,7 +106,7 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 	case mysql.ComFieldList:
 		return cc.handleFieldList(dataStr)
 	case mysql.ComStmtPrepare:
-		return cc.handleStmtPrepare(dataStr)
+		return cc.handleStmtPrepare(ctx, dataStr)
 	case mysql.ComStmtExecute:
 		return cc.handleStmtExecute(ctx, data)
 	case mysql.ComStmtFetch:
@@ -156,7 +156,7 @@ func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 	}
 
 	if rss != nil {
-		err = cc.writeGoMySQLResultset(ctx, rss.Resultset, false, 0 ,0)
+		err = cc.writeGoMySQLResultset(ctx, rss.Resultset, false, 0, 0)
 	} else {
 		// (eastfisher)currently we does not support load data
 		err = cc.writeOK()

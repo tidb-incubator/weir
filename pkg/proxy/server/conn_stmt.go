@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/binary"
 
 	"github.com/pingcap/errors"
+	"github.com/pingcap/parser/mysql"
 )
 
 // TODO(eastfisher): fix me when prepare is implemented
@@ -16,8 +18,8 @@ func (cc *clientConn) preparedStmt2StringNoArgs(stmtID uint32) string {
 	return ""
 }
 
-func (cc *clientConn) handleStmtPrepare(sql string) error {
-	stmtId, columns, params, err := cc.ctx.Prepare(sql)
+func (cc *clientConn) handleStmtPrepare(ctx context.Context, sql string) error {
+	stmtId, columns, params, err := cc.ctx.Prepare(ctx, sql)
 	if err != nil {
 		return err
 	}
@@ -74,17 +76,43 @@ func (cc *clientConn) handleStmtPrepare(sql string) error {
 }
 
 func (cc *clientConn) handleStmtExecute(ctx context.Context, data []byte) error {
-	return errors.New("stmt not implemented")
+	if len(data) < 9 {
+		return mysql.ErrMalformPacket
+	}
+
+	stmtID := binary.LittleEndian.Uint32(data[0:4])
+	ret, err := cc.ctx.StmtExecuteForward(int(stmtID), data)
+	if err != nil {
+		return err
+	}
+
+	if ret != nil {
+		err = cc.writeGoMySQLResultset(ctx, ret.Resultset, true, ret.Status, 0)
+	} else {
+		err = cc.writeOK()
+	}
+	return err
 }
 
+// TODO(eastfisher): implement this function
 func (cc *clientConn) handleStmtSendLongData(data []byte) error {
 	return errors.New("stmt not implemented")
 }
 
+// TODO(eastfisher): implement this function
 func (cc *clientConn) handleStmtReset(data []byte) error {
 	return errors.New("stmt not implemented")
 }
 
 func (cc *clientConn) handleStmtClose(data []byte) error {
-	return errors.New("stmt not implemented")
+	if len(data) < 4 {
+		return nil
+	}
+
+	stmtID := int(binary.LittleEndian.Uint32(data[0:4]))
+	if err := cc.ctx.StmtClose(stmtID); err != nil {
+		return err
+	}
+
+	return cc.writeOK()
 }

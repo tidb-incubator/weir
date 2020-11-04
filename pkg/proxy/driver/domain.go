@@ -40,6 +40,9 @@ type BackendConn interface {
 	Begin() error
 	Commit() error
 	Rollback() error
+	StmtPrepare(sql string) (Stmt, error)
+	StmtExecuteForward(data []byte) (*mysql.Result, error)
+	StmtClosePrepare(stmtId int) error
 	SetCharset(charset string) error
 	FieldList(table string, wildcard string) ([]*mysql.Field, error)
 	SetAutoCommit(bool) error
@@ -48,4 +51,10 @@ type BackendConn interface {
 	GetCharset() string
 	GetConnectionID() uint32
 	GetStatus() uint16
+}
+
+type Stmt interface {
+	ID() int
+	ParamNum() int
+	ColumnNum() int
 }
