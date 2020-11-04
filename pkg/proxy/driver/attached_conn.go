@@ -71,6 +71,10 @@ func (p *prepareStmtHolder) removeStmtId(stmtId int) bool {
 	}
 	delete(p.stmtIdSet, stmtId)
 	return true
+		ns:               ns,
+		isAutoCommitFlag: defaultAutoCommitFlag,
+		isInTransFlag:    defaultInTransFlag,
+	}
 }
 
 func (a *AttachedConnHolder) MergeStatus(svw *SessionVarsWrapper) {
