@@ -8,9 +8,7 @@ import (
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
-	"go.uber.org/zap"
 )
 
 func (q *QueryCtxImpl) execute(ctx context.Context, sql string) (*gomysql.Result, error) {
@@ -107,22 +105,12 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 	}
 }
 
+// TODO(eastfisher): need refactoring
 func (q *QueryCtxImpl) executeInTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
-	q.txnLock.Lock()
-	defer q.txnLock.Unlock()
-
-	var err error
-	defer func() {
-		q.postUseTxnConn(err)
-	}()
-
-	if err = q.initTxnConn(ctx); err != nil {
-		return nil, err
+	queryFunc := func(ctx context.Context, conn PooledBackendConn) (*gomysql.Result, error) {
+		return q.executeInBackendConn(ctx, conn, q.currentDB, sql, stmtNode)
 	}
-
-	var ret *gomysql.Result
-	ret, err = q.executeInBackendConn(ctx, q.txnConn, q.currentDB, sql, stmtNode)
-	return ret, err
+	return q.attachedConn.ExecuteQuery(ctx, queryFunc)
 }
 
 func (q *QueryCtxImpl) executeInNoTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
@@ -174,25 +162,15 @@ func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error
 }
 
 func (q *QueryCtxImpl) setAutoCommit(ctx context.Context, v *ast.VariableAssignment) error {
-	q.txnLock.Lock()
-	defer q.txnLock.Unlock()
-
 	var err error
 	autocommit, err := getAutoCommitValue(v.Value)
 	if err != nil {
 		return err
 	}
 
-	originAutoCommit := q.isAutoCommit()
-	defer func() {
-		if err != nil {
-			q.sessionVars.SetStatusFlag(mysql.ServerStatusAutocommit, originAutoCommit)
-		}
-		q.postUseTxnConn(err)
-	}()
-
-	q.sessionVars.SetStatusFlag(mysql.ServerStatusAutocommit, autocommit)
-	return q.initTxnConn(ctx)
+	err = q.attachedConn.SetAutoCommit(ctx, autocommit)
+	q.attachedConn.MergeStatus(q.sessionVars)
+	return err
 }
 
 func getAutoCommitValue(v ast.ExprNode) (bool, error) {
@@ -211,89 +189,21 @@ func getAutoCommitValue(v ast.ExprNode) (bool, error) {
 }
 
 func (q *QueryCtxImpl) begin(ctx context.Context) error {
-	q.txnLock.Lock()
-	defer q.txnLock.Unlock()
-
-	var err error
-	defer func() {
-		q.postUseTxnConn(err)
-	}()
-
-	if err = q.initTxnConn(ctx); err != nil {
-		return err
-	}
-
-	if err = q.txnConn.Begin(); err != nil {
-		return err
-	}
-
-	q.sessionVars.SetStatusFlag(mysql.ServerStatusInTrans, true)
-	return nil
+	err := q.attachedConn.Begin(ctx)
+	q.attachedConn.MergeStatus(q.sessionVars)
+	return err
 }
 
 func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error {
-	q.txnLock.Lock()
-	defer q.txnLock.Unlock()
-
-	if q.txnConn == nil {
-		q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
-		return errors.New("txn conn is not set")
-	}
-
-	var err error
-	defer func() {
-		q.postUseTxnConn(err)
-	}()
-
-	if commit {
-		err = q.txnConn.Commit()
-	} else {
-		err = q.txnConn.Rollback()
-	}
-	if err != nil {
-		return err
-	}
-
-	q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
-	return nil
-}
-
-func (q *QueryCtxImpl) initTxnConn(ctx context.Context) error {
-	if q.txnConn != nil {
-		return nil
-	}
-	conn, err := q.ns.GetPooledConn(ctx)
-	if err != nil {
-		return err
-	}
-	if err := conn.SetAutoCommit(q.isAutoCommit()); err != nil {
-		return err
-	}
-	q.txnConn = conn
-	return nil
-}
-
-func (q *QueryCtxImpl) postUseTxnConn(err error) {
-	if err != nil {
-		if q.txnConn != nil {
-			if errClose := q.txnConn.ErrorClose(); errClose != nil {
-				logutil.BgLogger().Error("close txn conn error", zap.Error(errClose), zap.String("namespace", q.ns.Name()))
-			}
-			q.txnConn = nil
-		}
-		q.sessionVars.SetStatusFlag(ServerStatusInTrans, false)
-	} else {
-		if q.isAutoCommit() && !q.isInTransaction() && q.txnConn != nil {
-			q.txnConn.PutBack()
-			q.txnConn = nil
-		}
-	}
+	err := q.attachedConn.CommitOrRollback(commit)
+	q.attachedConn.MergeStatus(q.sessionVars)
+	return err
 }
 
 func (q *QueryCtxImpl) isAutoCommit() bool {
-	return q.sessionVars.GetStatusFlag(ServerStatusAutocommit)
+	return q.attachedConn.IsAutoCommit()
 }
 
 func (q *QueryCtxImpl) isInTransaction() bool {
-	return q.sessionVars.GetStatusFlag(ServerStatusInTrans)
+	return q.attachedConn.IsInTransaction()
 }

@@ -3,7 +3,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
@@ -36,8 +35,8 @@ type QueryCtxImpl struct {
 	currentDB   string
 	parser      *parser.Parser
 	sessionVars *SessionVarsWrapper
-	txnConn     PooledBackendConn
-	txnLock     sync.Mutex
+
+	attachedConn *AttachedConnHolder
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
@@ -143,13 +142,7 @@ func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error)
 
 // TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) Close() error {
-	q.txnLock.Lock()
-	defer q.txnLock.Unlock()
-
-	if q.txnConn != nil {
-		q.txnConn.PutBack()
-	}
-	return nil
+	return q.attachedConn.Close()
 }
 
 func (q *QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bool {
@@ -158,6 +151,7 @@ func (q *QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bo
 		return false
 	}
 	q.ns = ns
+	q.initAttachedConnHolder()
 	return true
 }
 
@@ -177,4 +171,9 @@ func (q *QueryCtxImpl) SetCommandValue(command byte) {
 // TODO(eastfisher): remove this function when Driver interface is changed
 func (*QueryCtxImpl) SetSessionManager(util.SessionManager) {
 	return
+}
+
+func (q *QueryCtxImpl) initAttachedConnHolder() {
+	attachedConn := NewAttachedConnHolder(q.ns)
+	q.attachedConn = attachedConn
 }
