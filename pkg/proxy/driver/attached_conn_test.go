@@ -325,8 +325,7 @@ func (a *AttachedConnTestSuite) Test_Begin_AndThen_ExecuteQuery_AndThen_Commit_S
 	require.Nil(a.T(), a.mockHolder.txnConn)
 }
 
-// FIXME(eastfisher): need rollback
-func (a *AttachedConnTestSuite) Test_Begin_AndThen_ExecuteQuery_Error_EnableAutoCommit() {
+func (a *AttachedConnTestSuite) Test_Begin_AndThen_ExecuteQuery_Error_AndThen_Commit_Success_EnableAutoCommit() {
 	ctx := context.Background()
 
 	// begin
@@ -344,11 +343,9 @@ func (a *AttachedConnTestSuite) Test_Begin_AndThen_ExecuteQuery_Error_EnableAuto
 	require.Equal(a.T(), true, a.mockHolder.IsInTransaction())
 
 	// execute
-	sql := "SELECT * FROM tbl1"
+	sql := "SELECT * FROM tbl1" // this is a correct statement, but execution may cause error
 	mockPooledBackendConn.On("IsAutoCommit").Return(true).Once()
 	mockPooledBackendConn.On("Execute", sql).Return(nil, mockError).Once()
-	//mockPooledBackendConn.On("Rollback").Return(nil).Once()
-	mockPooledBackendConn.On("ErrorClose").Return(nil).Once()
 
 	queryFunc := func(ctx context.Context, conn PooledBackendConn) (*gomysql.Result, error) {
 		return conn.Execute(sql)
@@ -357,12 +354,67 @@ func (a *AttachedConnTestSuite) Test_Begin_AndThen_ExecuteQuery_Error_EnableAuto
 	_, err = a.mockHolder.ExecuteQuery(ctx, queryFunc)
 	assert.EqualError(a.T(), err, mockError.Error())
 	mockPooledBackendConn.AssertCalled(a.T(), "Execute", sql)
-	// FIXME(eastfisher): currently rollback is not called.
-	//mockPooledBackendConn.AssertCalled(a.T(), "Rollback")
-	mockPooledBackendConn.AssertCalled(a.T(), "ErrorClose")
+	assert.Nil(a.T(), a.mockHolder.txnConn)
+	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
+	require.Equal(a.T(), true, a.mockHolder.IsInTransaction())
+
+	// commit
+	mockPooledBackendConn.On("Commit").Return(nil)
+	mockPooledBackendConn.On("PutBack").Return()
+
+	err = a.mockHolder.CommitOrRollback(true)
+	require.NoError(a.T(), err)
+	mockPooledBackendConn.AssertCalled(a.T(), "Commit")
+	mockPooledBackendConn.AssertCalled(a.T(), "PutBack")
+	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
+	require.Equal(a.T(), false, a.mockHolder.IsInTransaction())
+	require.Nil(a.T(), a.mockHolder.txnConn)
+}
+
+func (a *AttachedConnTestSuite) Test_Begin_AndThen_ExecuteQuery_Error_AndThen_Commit_Error_EnableAutoCommit() {
+	ctx := context.Background()
+
+	// begin
+	mockPooledBackendConn := new(MockPooledBackendConn)
+	mockPooledBackendConn.On("IsAutoCommit").Return(true).Once()
+	mockPooledBackendConn.On("Begin").Return(nil).Once()
+	a.mockNs.On("GetPooledConn", ctx).Return(mockPooledBackendConn, nil).Once()
+
+	err := a.mockHolder.Begin(ctx)
+	require.NoError(a.T(), err)
+	a.mockNs.AssertCalled(a.T(), "GetPooledConn", ctx)
+	mockPooledBackendConn.AssertCalled(a.T(), "Begin")
+	require.NotNil(a.T(), a.mockHolder.txnConn)
+	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
+	require.Equal(a.T(), true, a.mockHolder.IsInTransaction())
+
+	// execute
+	sql := "SELECT * FROM tbl1" // this is a correct statement, but execution may cause error
+	mockPooledBackendConn.On("IsAutoCommit").Return(true).Once()
+	mockPooledBackendConn.On("Execute", sql).Return(nil, mockError).Once()
+
+	queryFunc := func(ctx context.Context, conn PooledBackendConn) (*gomysql.Result, error) {
+		return conn.Execute(sql)
+	}
+
+	_, err = a.mockHolder.ExecuteQuery(ctx, queryFunc)
+	assert.EqualError(a.T(), err, mockError.Error())
+	mockPooledBackendConn.AssertCalled(a.T(), "Execute", sql)
 	assert.Nil(a.T(), a.mockHolder.txnConn)
 	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
 	require.Equal(a.T(), false, a.mockHolder.IsInTransaction())
+
+	// commit error should close backend conn
+	mockPooledBackendConn.On("Commit").Return(mockError)
+	mockPooledBackendConn.On("ErrorClose").Return(nil)
+
+	err = a.mockHolder.CommitOrRollback(true)
+	require.EqualError(a.T(), err, mockError.Error())
+	mockPooledBackendConn.AssertCalled(a.T(), "Commit")
+	mockPooledBackendConn.AssertCalled(a.T(), "ErrorClose")
+	require.Equal(a.T(), true, a.mockHolder.IsAutoCommit())
+	require.Equal(a.T(), false, a.mockHolder.IsInTransaction())
+	require.Nil(a.T(), a.mockHolder.txnConn)
 }
 
 // FIXME(eastfisher): need rollback
