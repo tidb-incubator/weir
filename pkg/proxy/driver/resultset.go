@@ -28,6 +28,24 @@ func wrapMySQLResult(result *mysql.Result) *weirResultSet {
 	return resultSet
 }
 
+func createBinaryPrepareColumns(cnt int) []*server.ColumnInfo {
+	info := &server.ColumnInfo{}
+	return copyColumnInfo(info, cnt)
+}
+
+func createBinaryPrepareParams(cnt int) []*server.ColumnInfo {
+	info := &server.ColumnInfo{Name: "?"}
+	return copyColumnInfo(info, cnt)
+}
+
+func copyColumnInfo(info *server.ColumnInfo, cnt int) []*server.ColumnInfo {
+	ret := make([]*server.ColumnInfo, 0, cnt)
+	for i := 0; i < cnt; i++ {
+		ret = append(ret, info)
+	}
+	return ret
+}
+
 func convertFieldsToColumnInfos(fields []*mysql.Field) []*server.ColumnInfo {
 	var columnInfos []*server.ColumnInfo
 	for _, field := range fields {

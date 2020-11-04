@@ -110,14 +110,23 @@ func (q *QueryCtxImpl) SetClientCapability(capability uint32) {
 	q.sessionVars.SetClientCapability(capability)
 }
 
-// TODO(eastfisher): implement this function when prepare is supported
-func (*QueryCtxImpl) Prepare(sql string) (statement server.PreparedStatement, columns, params []*server.ColumnInfo, err error) {
-	return nil, nil, nil, fmt.Errorf("prepare is unimplemented")
+func (q *QueryCtxImpl) Prepare(ctx context.Context, sql string) (stmtId int, columns, params []*server.ColumnInfo, err error) {
+	stmt, err := q.attachedConn.StmtPrepare(ctx, sql)
+	if err != nil {
+		return -1, nil, nil, err
+	}
+
+	columns = createBinaryPrepareColumns(stmt.ColumnNum())
+	params = createBinaryPrepareParams(stmt.ParamNum())
+	return stmt.ID(), columns, params, nil
 }
 
-// TODO(eastfisher): implement this function when prepare is supported
-func (*QueryCtxImpl) GetStatement(stmtID int) server.PreparedStatement {
-	return nil
+func (q *QueryCtxImpl) StmtExecuteForward(stmtId int, data []byte) (*gomysql.Result, error) {
+	return q.attachedConn.StmtExecuteForward(stmtId, data)
+}
+
+func (q *QueryCtxImpl) StmtClose(stmtId int) error {
+	return q.attachedConn.StmtClose(stmtId)
 }
 
 func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error) {

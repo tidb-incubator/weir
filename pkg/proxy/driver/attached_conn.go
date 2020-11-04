@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
@@ -13,6 +14,7 @@ import (
 const (
 	defaultAutoCommitFlag = true
 	defaultInTransFlag    = false
+	defaultInPrepare      = false
 )
 
 type AttachedConnHolder struct {
@@ -21,10 +23,54 @@ type AttachedConnHolder struct {
 	ns               Namespace
 	txnConn          PooledBackendConn
 	txnLock          sync.Mutex
+
+	prepareStmtHolder *prepareStmtHolder
+}
+
+type prepareStmtHolder struct {
+	stmtIdSet map[int]struct{}
 }
 
 func NewAttachedConnHolder(ns Namespace) *AttachedConnHolder {
 	return &AttachedConnHolder{
+		ns:                ns,
+		isAutoCommitFlag:  defaultAutoCommitFlag,
+		isInTransFlag:     defaultInTransFlag,
+		prepareStmtHolder: newPrepareStmtHolder(),
+	}
+}
+
+func newPrepareStmtHolder() *prepareStmtHolder {
+	return &prepareStmtHolder{
+		stmtIdSet: make(map[int]struct{}),
+	}
+}
+
+func (p *prepareStmtHolder) isInPrepare() bool {
+	return len(p.stmtIdSet) != 0
+}
+
+func (p *prepareStmtHolder) addStmtId(stmtId int) bool {
+	_, ok := p.stmtIdSet[stmtId]
+	if ok {
+		return false
+	}
+	p.stmtIdSet[stmtId] = struct{}{}
+	return true
+}
+
+func (p *prepareStmtHolder) isStmtIdExist(stmtId int) bool {
+	_, ok := p.stmtIdSet[stmtId]
+	return ok
+}
+
+func (p *prepareStmtHolder) removeStmtId(stmtId int) bool {
+	_, ok := p.stmtIdSet[stmtId]
+	if !ok {
+		return false
+	}
+	delete(p.stmtIdSet, stmtId)
+	return true
 		ns:               ns,
 		isAutoCommitFlag: defaultAutoCommitFlag,
 		isInTransFlag:    defaultInTransFlag,
@@ -136,6 +182,74 @@ func (a *AttachedConnHolder) CommitOrRollback(commit bool) error {
 	return nil
 }
 
+func (a *AttachedConnHolder) StmtPrepare(ctx context.Context, sql string) (Stmt, error) {
+	a.txnLock.Lock()
+	defer a.txnLock.Unlock()
+
+	var err error
+	defer func() {
+		a.postUseTxnConn(err)
+	}()
+
+	if err := a.initTxnConn(ctx); err != nil {
+		return nil, err
+	}
+
+	stmt, err := a.txnConn.StmtPrepare(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	a.prepareStmtHolder.addStmtId(stmt.ID())
+	return stmt, nil
+}
+
+func (a *AttachedConnHolder) StmtExecuteForward(stmtId int, data []byte) (*gomysql.Result, error) {
+	a.txnLock.Lock()
+	defer a.txnLock.Unlock()
+
+	var err error
+	defer func() {
+		a.postUseTxnConn(err)
+	}()
+
+	if !a.prepareStmtHolder.isStmtIdExist(stmtId) {
+		err = errors.New("stmt id not found")
+		return nil, err
+	}
+
+	if a.txnConn == nil {
+		err = errors.New("backend conn is released")
+		return nil, err
+	}
+
+	var ret *gomysql.Result
+	ret, err = a.txnConn.StmtExecuteForward(data)
+	return ret, err
+}
+
+func (a *AttachedConnHolder) StmtClose(stmtId int) error {
+	a.txnLock.Lock()
+	defer a.txnLock.Unlock()
+
+	var err error
+	defer func() {
+		a.postUseTxnConn(err)
+	}()
+
+	if !a.prepareStmtHolder.isStmtIdExist(stmtId) {
+		err = errors.New("stmt id not found")
+		return err
+	}
+
+	if err = a.txnConn.StmtClosePrepare(stmtId); err != nil {
+		return err
+	}
+
+	a.prepareStmtHolder.removeStmtId(stmtId)
+	return nil
+}
+
 func (a *AttachedConnHolder) Close() error {
 	a.txnLock.Lock()
 	defer a.txnLock.Unlock()
@@ -163,6 +277,7 @@ func (a *AttachedConnHolder) isInTransaction() bool {
 	return a.isInTransFlag
 }
 
+// TODO(eastfisher): handle prepare stmt
 func (a *AttachedConnHolder) postUseTxnConn(err error) {
 	if err != nil {
 		a.errCloseConn()

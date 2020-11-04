@@ -106,17 +106,17 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 	case mysql.ComFieldList:
 		return cc.handleFieldList(dataStr)
 	case mysql.ComStmtPrepare:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtPrepare(ctx, dataStr)
 	case mysql.ComStmtExecute:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtExecute(ctx, data)
 	case mysql.ComStmtFetch:
 		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
 	case mysql.ComStmtClose:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtClose(data)
 	case mysql.ComStmtSendLongData:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtSendLongData(data)
 	case mysql.ComStmtReset:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtReset(data)
 	case mysql.ComSetOption:
 		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
 	case mysql.ComChangeUser:
@@ -156,7 +156,7 @@ func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 	}
 
 	if rss != nil {
-		err = cc.writeGoMySQLResultset(ctx, rss.Resultset, false, 0 ,0)
+		err = cc.writeGoMySQLResultset(ctx, rss.Resultset, false, 0, 0)
 	} else {
 		// (eastfisher)currently we does not support load data
 		err = cc.writeOK()

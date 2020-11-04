@@ -229,6 +229,66 @@ func (_m *MockBackendConn) SetCharset(charset string) error {
 	return r0
 }
 
+// StmtClosePrepare provides a mock function with given fields: stmtId
+func (_m *MockBackendConn) StmtClosePrepare(stmtId int) error {
+	ret := _m.Called(stmtId)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int) error); ok {
+		r0 = rf(stmtId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// StmtExecuteForward provides a mock function with given fields: data
+func (_m *MockBackendConn) StmtExecuteForward(data []byte) (*mysql.Result, error) {
+	ret := _m.Called(data)
+
+	var r0 *mysql.Result
+	if rf, ok := ret.Get(0).(func([]byte) *mysql.Result); ok {
+		r0 = rf(data)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*mysql.Result)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = rf(data)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// StmtPrepare provides a mock function with given fields: sql
+func (_m *MockBackendConn) StmtPrepare(sql string) (Stmt, error) {
+	ret := _m.Called(sql)
+
+	var r0 Stmt
+	if rf, ok := ret.Get(0).(func(string) Stmt); ok {
+		r0 = rf(sql)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(Stmt)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(sql)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // UseDB provides a mock function with given fields: dbName
 func (_m *MockBackendConn) UseDB(dbName string) error {
 	ret := _m.Called(dbName)
