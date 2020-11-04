@@ -110,14 +110,8 @@ func (q *QueryCtxImpl) SetClientCapability(capability uint32) {
 	q.sessionVars.SetClientCapability(capability)
 }
 
-// TODO(eastfisher): implement this function when prepare is supported
-func (*QueryCtxImpl) Prepare(sql string) (statement server.PreparedStatement, columns, params []*server.ColumnInfo, err error) {
-	return nil, nil, nil, fmt.Errorf("prepare is unimplemented")
-}
-
-// TODO(eastfisher): implement this function when prepare is supported
-func (*QueryCtxImpl) GetStatement(stmtID int) server.PreparedStatement {
-	return nil
+func (q *QueryCtxImpl) Prepare(sql string) (stmtId int, columns, params []*server.ColumnInfo, err error) {
+	return 0, nil, nil, fmt.Errorf("prepare is unimplemented")
 }
 
 func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error) {

@@ -106,17 +106,17 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 	case mysql.ComFieldList:
 		return cc.handleFieldList(dataStr)
 	case mysql.ComStmtPrepare:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtPrepare(dataStr)
 	case mysql.ComStmtExecute:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtExecute(ctx, data)
 	case mysql.ComStmtFetch:
 		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
 	case mysql.ComStmtClose:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtClose(data)
 	case mysql.ComStmtSendLongData:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtSendLongData(data)
 	case mysql.ComStmtReset:
-		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
+		return cc.handleStmtReset(data)
 	case mysql.ComSetOption:
 		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
 	case mysql.ComChangeUser:

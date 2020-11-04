@@ -77,10 +77,7 @@ type QueryCtx interface {
 	SetClientCapability(uint32)
 
 	// Prepare prepares a statement.
-	Prepare(sql string) (statement PreparedStatement, columns, params []*ColumnInfo, err error)
-
-	// GetStatement gets PreparedStatement by statement ID.
-	GetStatement(stmtID int) PreparedStatement
+	Prepare(sql string) (stmtId int, columns, params []*ColumnInfo, err error)
 
 	// FieldList returns columns of a table.
 	FieldList(tableName string) (columns []*ColumnInfo, err error)
