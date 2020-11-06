@@ -37,25 +37,41 @@ func (f *BackendConnManager) Query(ctx context.Context, sql string) (*gomysql.Re
 func (f *BackendConnManager) SetAutoCommit(ctx context.Context, autocommit bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	panic("unimplemented")
+
+	var err error
+	if autocommit {
+		_, err = f.fsm.CallV2(ctx, EventEnableAutoCommit, f)
+	} else {
+		_, err = f.fsm.CallV2(ctx, EventDisableAutoCommit, f)
+	}
+	return err
 }
 
 func (f *BackendConnManager) Begin(ctx context.Context) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	panic("unimplemented")
+
+	_, err := f.fsm.CallV2(ctx, EventBegin, f)
+	return err
 }
 
 func (f *BackendConnManager) CommitOrRollback(ctx context.Context, commit bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	panic("unimplemented")
+
+	_, err := f.fsm.CallV2(ctx, EventCommitOrRollback, f, commit)
+	return err
 }
 
+// TODO(eastfisher): is it possible to use FSM to manage close?
 func (f *BackendConnManager) Close() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	panic("unimplemented")
+
+	errClosePooledBackendConn(f.txnConn, f.ns.Name())
+	f.state = stateInitial
+	f.txnConn = nil
+	return nil
 }
 
 func (f *BackendConnManager) queryWithoutTxn(ctx context.Context, sql string) (*gomysql.Result, error) {
