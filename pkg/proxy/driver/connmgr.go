@@ -19,15 +19,16 @@ type BackendConnManager struct {
 	mu      sync.Mutex
 	txnConn PooledBackendConn
 
-	prepareStmtSet *prepareStmtHolder
+	// TODO: use stmt id set
+	isPrepared bool
 }
 
 func NewBackendConnManager(fsm *FSM, ns Namespace) *BackendConnManager {
 	return &BackendConnManager{
-		fsm:            fsm,
-		state:          stateInitial,
-		ns:             ns,
-		prepareStmtSet: newPrepareStmtHolder(),
+		fsm:        fsm,
+		state:      stateInitial,
+		ns:         ns,
+		isPrepared: false,
 	}
 }
 
@@ -76,6 +77,39 @@ func (f *BackendConnManager) CommitOrRollback(ctx context.Context, commit bool) 
 	defer f.mu.Unlock()
 
 	_, err := f.fsm.CallV2(ctx, EventCommitOrRollback, f, commit)
+	return err
+}
+
+func (f *BackendConnManager) StmtPrepare(ctx context.Context, sql string) (Stmt, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	ret, err := f.fsm.CallV2(ctx, EventStmtPrepare, f, sql)
+	if err != nil {
+		return nil, err
+	}
+	return ret.(Stmt), nil
+}
+
+func (f *BackendConnManager) StmtExecuteForward(ctx context.Context, stmtId int, data []byte) (*gomysql.Result, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	ret, err := f.fsm.CallV2(ctx, EventStmtForwardData, f, stmtId, data)
+	if err != nil {
+		return nil, err
+	}
+	if ret == nil {
+		return nil, nil
+	}
+	return ret.(*gomysql.Result), nil
+}
+
+func (f *BackendConnManager) StmtClose(ctx context.Context, stmtId int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	_, err := f.fsm.CallV2(ctx, EventStmtClose, f, stmtId)
 	return err
 }
 

@@ -111,25 +111,22 @@ func (q *QueryCtxImpl) SetClientCapability(capability uint32) {
 }
 
 func (q *QueryCtxImpl) Prepare(ctx context.Context, sql string) (stmtId int, columns, params []*server.ColumnInfo, err error) {
-	panic("unimplemented")
-	//stmt, err := q.attachedConn.StmtPrepare(ctx, sql)
-	//if err != nil {
-	//	return -1, nil, nil, err
-	//}
-	//
-	//columns = createBinaryPrepareColumns(stmt.ColumnNum())
-	//params = createBinaryPrepareParams(stmt.ParamNum())
-	//return stmt.ID(), columns, params, nil
+	stmt, err := q.connMgr.StmtPrepare(ctx, sql)
+	if err != nil {
+		return -1, nil, nil, err
+	}
+
+	columns = createBinaryPrepareColumns(stmt.ColumnNum())
+	params = createBinaryPrepareParams(stmt.ParamNum())
+	return stmt.ID(), columns, params, nil
 }
 
-func (q *QueryCtxImpl) StmtExecuteForward(stmtId int, data []byte) (*gomysql.Result, error) {
-	panic("unimplemented")
-	//return q.attachedConn.StmtExecuteForward(stmtId, data)
+func (q *QueryCtxImpl) StmtExecuteForward(ctx context.Context, stmtId int, data []byte) (*gomysql.Result, error) {
+	return q.connMgr.StmtExecuteForward(ctx, stmtId, data)
 }
 
-func (q *QueryCtxImpl) StmtClose(stmtId int) error {
-	panic("unimplemented")
-	//return q.attachedConn.StmtClose(stmtId)
+func (q *QueryCtxImpl) StmtClose(ctx context.Context, stmtId int) error {
+	return q.connMgr.StmtClose(ctx, stmtId)
 }
 
 func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error) {

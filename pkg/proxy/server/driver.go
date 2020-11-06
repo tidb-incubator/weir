@@ -79,9 +79,9 @@ type QueryCtx interface {
 	// Prepare prepares a statement.
 	Prepare(ctx context.Context, sql string) (stmtId int, columns, params []*ColumnInfo, err error)
 
-	StmtExecuteForward(stmtId int, data []byte) (*mysql.Result, error)
+	StmtExecuteForward(ctx context.Context, stmtId int, data []byte) (*mysql.Result, error)
 
-	StmtClose(stmtId int) error
+	StmtClose(ctx context.Context, stmtId int) error
 
 	// FieldList returns columns of a table.
 	FieldList(tableName string) (columns []*ColumnInfo, err error)
