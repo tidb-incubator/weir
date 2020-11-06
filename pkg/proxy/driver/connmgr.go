@@ -27,6 +27,7 @@ func NewBackendConnManager(fsm *FSM, ns Namespace) *BackendConnManager {
 		ns:    ns,
 	}
 }
+
 func (f *BackendConnManager) MergeStatus(svw *SessionVarsWrapper) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
