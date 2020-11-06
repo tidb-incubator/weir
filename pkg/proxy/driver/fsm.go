@@ -89,20 +89,22 @@ func (q *FSM) Init() {
 	q.MustRegisterActionV2(State1, State1, EventDisableAutoCommit, false, noopHandler)
 	q.MustRegisterActionV2(State1, State1, EventBegin, false, noopHandler)
 	q.MustRegisterActionV2(State1, State1, EventQuery, false, fsmHandler_Transaction_EventQuery)
-	q.MustRegisterActionV2(State1, State0, EventCommitOrRollback, true, fsmHandler_State1_EventCommitOrRollback)  // 防止出现死循环, ok不变, err关闭后重新拿一个连接出来 (这里就有坑了, 如果拿不出来要怎么办?)
-	q.MustRegisterActionV2(State1, State3, EventEnableAutoCommit, false, fsmHandler_State1_EventEnableAutoCommit) // 小心! error时不能关闭连接 (还在事务中), 所以只能保持状态不变 (是否要关闭连接, 回滚事务?)
+	// TODO(eastfisher): commit error may cause state infinite loop!
+	// TODO(eastfisher): upper layer should recognize network error and then close queryctx.
+	q.MustRegisterActionV2(State1, State0, EventCommitOrRollback, true, fsmHandler_State1_EventCommitOrRollback)
+	q.MustRegisterActionV2(State1, State3, EventEnableAutoCommit, false, fsmHandler_State1_EventEnableAutoCommit)
 
 	q.MustRegisterActionV2(State2, State2, EventEnableAutoCommit, false, noopHandler)
 	q.MustRegisterActionV2(State2, State2, EventCommitOrRollback, false, noopHandler)
 	q.MustRegisterActionV2(State2, State2, EventQuery, false, fsmHandler_NoTransaction_EventQuery)
-	q.MustRegisterActionV2(State2, State0, EventDisableAutoCommit, false, fsmHandler_State2_EventDisableAutoCommit) // 设置失败时直接关闭连接
+	q.MustRegisterActionV2(State2, State0, EventDisableAutoCommit, false, fsmHandler_State2_EventDisableAutoCommit)
 	q.MustRegisterActionV2(State2, State3, EventBegin, false, fsmHandler_State2_EventBegin)
 
 	q.MustRegisterActionV2(State3, State3, EventEnableAutoCommit, false, noopHandler)
 	q.MustRegisterActionV2(State3, State3, EventBegin, false, noopHandler)
 	q.MustRegisterActionV2(State3, State3, EventQuery, false, fsmHandler_Transaction_EventQuery)
-	q.MustRegisterActionV2(State3, State1, EventDisableAutoCommit, false, fsmHandler_State3_EventDisableAutoCommit) // 小心! error时不能关闭连接 (是否要关闭连接, 回滚事务?)
-	q.MustRegisterActionV2(State3, State2, EventCommitOrRollback, true, fsmHandler_State3_EventCommitOrRollback)    // ok回收, err关闭
+	q.MustRegisterActionV2(State3, State1, EventDisableAutoCommit, false, fsmHandler_State3_EventDisableAutoCommit)
+	q.MustRegisterActionV2(State3, State2, EventCommitOrRollback, true, fsmHandler_State3_EventCommitOrRollback)
 }
 
 func (q *FSM) MustRegisterActionV2(state FSMState, newState FSMState, event FSMEvent, mustChangeState bool, handler FSMHandler) {
