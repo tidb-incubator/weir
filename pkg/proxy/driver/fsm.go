@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/pingcap/tidb/util/logutil"
@@ -41,34 +40,8 @@ const (
 	EventStmtClose
 )
 
-type FSMActionResult struct {
-	StateChange bool
-	NewState    FSMState
-	Result      *mysql.Result
-	Error       error
-}
-
-type EventHandler struct {
-	State FSMState
-}
-
-type FSMAction func(conn *BackendConnManager, ctx context.Context, args ...interface{}) FSMActionResult
-
 type FSM struct {
-	handlers   map[FSMState]map[FSMEvent]FSMAction
 	handlersV2 map[FSMState]map[FSMEvent]*FSMHandlerWrapper
-}
-
-func NewFSMActionResultWithoutStateChange(ret *mysql.Result, err error) FSMActionResult {
-	return NewFSMActionResult(StateUnknown, ret, err)
-}
-
-func NewFSMActionResult(newState FSMState, ret *mysql.Result, err error) FSMActionResult {
-	return FSMActionResult{
-		NewState: newState,
-		Result:   ret,
-		Error:    err,
-	}
 }
 
 type FSMHandlerWrapper struct {
@@ -78,7 +51,6 @@ type FSMHandlerWrapper struct {
 }
 
 type FSMHandler func(conn *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error)
-type FSMConnMethodHandler func(ctx context.Context, args ...interface{}) (*mysql.Result, error)
 
 func noopHandler(conn *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error) {
 	return nil, nil
@@ -86,7 +58,7 @@ func noopHandler(conn *BackendConnManager, ctx context.Context, args ...interfac
 
 func NewFSM() *FSM {
 	return &FSM{
-		handlers: make(map[FSMState]map[FSMEvent]FSMAction),
+		handlersV2: make(map[FSMState]map[FSMEvent]*FSMHandlerWrapper),
 	}
 }
 
@@ -145,36 +117,6 @@ func (q *FSM) CallV2(ctx context.Context, event FSMEvent, conn *BackendConnManag
 		conn.state = action.NewState
 	}
 	return ret, err
-}
-
-func (q *FSM) RegisterAction(state FSMState, event FSMEvent, action FSMAction) error {
-	_, ok := q.handlers[state]
-	if !ok {
-		q.handlers[state] = make(map[FSMEvent]FSMAction)
-	}
-	_, ok = q.handlers[state][event]
-	if ok {
-		return errors.New("duplicated handler")
-	}
-	q.handlers[state][event] = action
-	return nil
-}
-
-func (q *FSM) Call(ctx context.Context, state FSMState, event FSMEvent, conn *BackendConnManager, args ...interface{}) FSMActionResult {
-	action, ok := q.getAction(state, event)
-	if !ok {
-		NewFSMActionResult(state, nil, fmt.Errorf("fsm action not found"))
-	}
-	return action(conn, ctx, args...)
-}
-
-func (q *FSM) getAction(state FSMState, event FSMEvent) (FSMAction, bool) {
-	eventHandlers, ok := q.handlers[state]
-	if !ok {
-		return nil, false
-	}
-	eventHandler, ok := eventHandlers[event]
-	return eventHandler, ok
 }
 
 func (q *FSM) getActionV2(state FSMState, event FSMEvent) (*FSMHandlerWrapper, bool) {
