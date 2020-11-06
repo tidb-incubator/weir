@@ -63,10 +63,24 @@ type FSM struct {
 type FSMHandlerWrapper struct {
 	NewState        FSMState
 	MustChangeState bool
-	Handle          FSMHandler
+	Handler         FSMHandler
 }
 
-type FSMHandler func(conn *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error)
+type FSMHandler interface {
+	Handle(conn *BackendConnManager, ctx context.Context, args ...interface{}) (interface{}, error)
+}
+
+type FSMHandlerFunc func(conn *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error)
+
+type FSMStmtPrepareHandlerFunc func(conn *BackendConnManager, ctx context.Context, args ...interface{}) (Stmt, error)
+
+func (f FSMHandlerFunc) Handle(conn *BackendConnManager, ctx context.Context, args ...interface{}) (interface{}, error) {
+	return f(conn, ctx, args...)
+}
+
+func (f FSMStmtPrepareHandlerFunc) Handle(conn *BackendConnManager, ctx context.Context, args ...interface{}) (interface{}, error) {
+	return f(conn, ctx, args...)
+}
 
 func noopHandler(conn *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error) {
 	return nil, nil
@@ -80,38 +94,39 @@ func NewFSM() *FSM {
 
 func (q *FSM) Init() {
 	// in state0, txnConn must be non nil, so we don't check txnConn nil in handlers
-	q.MustRegisterActionV2(State0, State0, EventDisableAutoCommit, false, noopHandler)
-	q.MustRegisterActionV2(State0, State0, EventCommitOrRollback, false, noopHandler)
-	q.MustRegisterActionV2(State0, State1, EventBegin, false, fsmHandler_State0_EventBegin)
-	q.MustRegisterActionV2(State0, State1, EventQuery, false, fsmHandler_Transaction_EventQuery)
-	q.MustRegisterActionV2(State0, State2, EventEnableAutoCommit, true, fsmHandler_State0_EventEnableAutoCommit)
+	q.MustRegisterActionV2(State0, State0, EventDisableAutoCommit, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterActionV2(State0, State0, EventCommitOrRollback, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterActionV2(State0, State1, EventBegin, false, FSMHandlerFunc(fsmHandler_State0_EventBegin))
+	q.MustRegisterActionV2(State0, State1, EventQuery, false, FSMHandlerFunc(fsmHandler_Transaction_EventQuery))
+	q.MustRegisterActionV2(State0, State2, EventEnableAutoCommit, true, FSMHandlerFunc(fsmHandler_State0_EventEnableAutoCommit))
+	q.MustRegisterActionV2(State0, State4, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_State0_EventStmtPrepare))
 
-	q.MustRegisterActionV2(State1, State1, EventDisableAutoCommit, false, noopHandler)
-	q.MustRegisterActionV2(State1, State1, EventBegin, false, noopHandler)
-	q.MustRegisterActionV2(State1, State1, EventQuery, false, fsmHandler_Transaction_EventQuery)
+	q.MustRegisterActionV2(State1, State1, EventDisableAutoCommit, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterActionV2(State1, State1, EventBegin, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterActionV2(State1, State1, EventQuery, false, FSMHandlerFunc(fsmHandler_Transaction_EventQuery))
 	// TODO(eastfisher): commit error may cause state infinite loop!
 	// TODO(eastfisher): upper layer should recognize network error and then close queryctx.
-	q.MustRegisterActionV2(State1, State0, EventCommitOrRollback, true, fsmHandler_State1_EventCommitOrRollback)
-	q.MustRegisterActionV2(State1, State3, EventEnableAutoCommit, false, fsmHandler_State1_EventEnableAutoCommit)
+	q.MustRegisterActionV2(State1, State0, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_State1_EventCommitOrRollback))
+	q.MustRegisterActionV2(State1, State3, EventEnableAutoCommit, false, FSMHandlerFunc(fsmHandler_State1_EventEnableAutoCommit))
 
-	q.MustRegisterActionV2(State2, State2, EventEnableAutoCommit, false, noopHandler)
-	q.MustRegisterActionV2(State2, State2, EventCommitOrRollback, false, noopHandler)
-	q.MustRegisterActionV2(State2, State2, EventQuery, false, fsmHandler_NoTransaction_EventQuery)
-	q.MustRegisterActionV2(State2, State0, EventDisableAutoCommit, false, fsmHandler_State2_EventDisableAutoCommit)
-	q.MustRegisterActionV2(State2, State3, EventBegin, false, fsmHandler_State2_EventBegin)
+	q.MustRegisterActionV2(State2, State2, EventEnableAutoCommit, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterActionV2(State2, State2, EventCommitOrRollback, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterActionV2(State2, State2, EventQuery, false, FSMHandlerFunc(fsmHandler_NoTransaction_EventQuery))
+	q.MustRegisterActionV2(State2, State0, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_State2_EventDisableAutoCommit))
+	q.MustRegisterActionV2(State2, State3, EventBegin, false, FSMHandlerFunc(fsmHandler_State2_EventBegin))
 
-	q.MustRegisterActionV2(State3, State3, EventEnableAutoCommit, false, noopHandler)
-	q.MustRegisterActionV2(State3, State3, EventBegin, false, noopHandler)
-	q.MustRegisterActionV2(State3, State3, EventQuery, false, fsmHandler_Transaction_EventQuery)
-	q.MustRegisterActionV2(State3, State1, EventDisableAutoCommit, false, fsmHandler_State3_EventDisableAutoCommit)
-	q.MustRegisterActionV2(State3, State2, EventCommitOrRollback, true, fsmHandler_State3_EventCommitOrRollback)
+	q.MustRegisterActionV2(State3, State3, EventEnableAutoCommit, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterActionV2(State3, State3, EventBegin, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterActionV2(State3, State3, EventQuery, false, FSMHandlerFunc(fsmHandler_Transaction_EventQuery))
+	q.MustRegisterActionV2(State3, State1, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_State3_EventDisableAutoCommit))
+	q.MustRegisterActionV2(State3, State2, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_State3_EventCommitOrRollback))
 }
 
 func (q *FSM) MustRegisterActionV2(state FSMState, newState FSMState, event FSMEvent, mustChangeState bool, handler FSMHandler) {
 	handlerWrapper := &FSMHandlerWrapper{
 		NewState:        newState,
 		MustChangeState: mustChangeState,
-		Handle:          handler,
+		Handler:         handler,
 	}
 
 	_, ok := q.handlersV2[state]
@@ -125,12 +140,12 @@ func (q *FSM) MustRegisterActionV2(state FSMState, newState FSMState, event FSME
 	q.handlersV2[state][event] = handlerWrapper
 }
 
-func (q *FSM) CallV2(ctx context.Context, event FSMEvent, conn *BackendConnManager, args ...interface{}) (*mysql.Result, error) {
+func (q *FSM) CallV2(ctx context.Context, event FSMEvent, conn *BackendConnManager, args ...interface{}) (interface{}, error) {
 	action, ok := q.getActionV2(conn.state, event)
 	if !ok {
 		return nil, fmt.Errorf("fsm handler not found")
 	}
-	ret, err := action.Handle(conn, ctx, args...)
+	ret, err := action.Handler.Handle(conn, ctx, args...)
 	if action.MustChangeState || err == nil {
 		conn.state = action.NewState
 	}
@@ -236,4 +251,16 @@ func fsmHandler_State3_EventCommitOrRollback(b *BackendConnManager, ctx context.
 
 	b.txnConn = nil
 	return nil, err
+}
+
+// TODO(eastfisher): currently we don't change db
+func fsmHandler_State0_EventStmtPrepare(b *BackendConnManager, ctx context.Context, args ...interface{}) (Stmt, error) {
+	sql := args[0].(string)
+	stmt, err := b.txnConn.StmtPrepare(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	b.prepareStmtSet.addStmtId(stmt.ID())
+	return stmt, nil
 }

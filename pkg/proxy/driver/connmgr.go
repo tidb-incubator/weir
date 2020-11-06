@@ -18,13 +18,16 @@ type BackendConnManager struct {
 
 	mu      sync.Mutex
 	txnConn PooledBackendConn
+
+	prepareStmtSet *prepareStmtHolder
 }
 
 func NewBackendConnManager(fsm *FSM, ns Namespace) *BackendConnManager {
 	return &BackendConnManager{
-		fsm:   fsm,
-		state: stateInitial,
-		ns:    ns,
+		fsm:            fsm,
+		state:          stateInitial,
+		ns:             ns,
+		prepareStmtSet: newPrepareStmtHolder(),
 	}
 }
 
@@ -40,7 +43,11 @@ func (f *BackendConnManager) Query(ctx context.Context, db, sql string) (*gomysq
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	return f.fsm.CallV2(ctx, EventQuery, f, db, sql)
+	ret, err := f.fsm.CallV2(ctx, EventQuery, f, db, sql)
+	if err != nil {
+		return nil, err
+	}
+	return ret.(*gomysql.Result), nil
 }
 
 func (f *BackendConnManager) SetAutoCommit(ctx context.Context, autocommit bool) error {
