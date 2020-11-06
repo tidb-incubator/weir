@@ -98,29 +98,18 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 }
 
 func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
-	if !q.isAutoCommit() || q.isInTransaction() {
-		return q.executeInTxnConn(ctx, sql, stmtNode)
-	} else {
-		return q.executeInNoTxnConn(ctx, sql, stmtNode)
-	}
-}
-
-// TODO(eastfisher): need refactoring
-func (q *QueryCtxImpl) executeInTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
-	queryFunc := func(ctx context.Context, conn PooledBackendConn) (*gomysql.Result, error) {
-		return q.executeInBackendConn(ctx, conn, q.currentDB, sql, stmtNode)
-	}
-	return q.attachedConn.ExecuteQuery(ctx, queryFunc)
-}
-
-func (q *QueryCtxImpl) executeInNoTxnConn(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
-	conn, err := q.ns.GetPooledConn(ctx)
+	result, err := q.connMgr.Query(ctx, q.currentDB, sql)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.PutBack()
 
-	return q.executeInBackendConn(ctx, conn, q.currentDB, sql, stmtNode)
+	if result.Resultset == nil {
+		q.sessionVars.SetAffectRows(result.AffectedRows)
+		q.sessionVars.SetLastInsertID(result.InsertId)
+		return nil, nil
+	}
+
+	return result, nil
 }
 
 func (q *QueryCtxImpl) executeInBackendConn(ctx context.Context, conn PooledBackendConn, db string, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
@@ -168,8 +157,8 @@ func (q *QueryCtxImpl) setAutoCommit(ctx context.Context, v *ast.VariableAssignm
 		return err
 	}
 
-	err = q.attachedConn.SetAutoCommit(ctx, autocommit)
-	q.attachedConn.MergeStatus(q.sessionVars)
+	err = q.connMgr.SetAutoCommit(ctx, autocommit)
+	q.connMgr.MergeStatus(q.sessionVars)
 	return err
 }
 
@@ -189,21 +178,13 @@ func getAutoCommitValue(v ast.ExprNode) (bool, error) {
 }
 
 func (q *QueryCtxImpl) begin(ctx context.Context) error {
-	err := q.attachedConn.Begin(ctx)
-	q.attachedConn.MergeStatus(q.sessionVars)
+	err := q.connMgr.Begin(ctx)
+	q.connMgr.MergeStatus(q.sessionVars)
 	return err
 }
 
 func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error {
-	err := q.attachedConn.CommitOrRollback(commit)
-	q.attachedConn.MergeStatus(q.sessionVars)
+	err := q.connMgr.CommitOrRollback(ctx, commit)
+	q.connMgr.MergeStatus(q.sessionVars)
 	return err
-}
-
-func (q *QueryCtxImpl) isAutoCommit() bool {
-	return q.attachedConn.IsAutoCommit()
-}
-
-func (q *QueryCtxImpl) isInTransaction() bool {
-	return q.attachedConn.IsInTransaction()
 }

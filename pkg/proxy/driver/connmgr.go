@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
 	"go.uber.org/zap"
@@ -26,12 +27,19 @@ func NewBackendConnManager(fsm *FSM, ns Namespace) *BackendConnManager {
 		ns:    ns,
 	}
 }
-
-func (f *BackendConnManager) Query(ctx context.Context, sql string) (*gomysql.Result, error) {
+func (f *BackendConnManager) MergeStatus(svw *SessionVarsWrapper) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	return f.fsm.CallV2(ctx, EventQuery, f, sql)
+	svw.SetStatusFlag(mysql.ServerStatusInTrans, f.isInTransaction())
+	svw.SetStatusFlag(mysql.ServerStatusAutocommit, f.isAutoCommit())
+}
+
+func (f *BackendConnManager) Query(ctx context.Context, db, sql string) (*gomysql.Result, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.fsm.CallV2(ctx, EventQuery, f, db, sql)
 }
 
 func (f *BackendConnManager) SetAutoCommit(ctx context.Context, autocommit bool) error {
@@ -74,17 +82,24 @@ func (f *BackendConnManager) Close() error {
 	return nil
 }
 
-func (f *BackendConnManager) queryWithoutTxn(ctx context.Context, sql string) (*gomysql.Result, error) {
+func (f *BackendConnManager) queryWithoutTxn(ctx context.Context, db, sql string) (*gomysql.Result, error) {
 	conn, err := f.ns.GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.PutBack()
 
+	if err = conn.UseDB(db); err != nil {
+		return nil, err
+	}
+
 	return conn.Execute(sql)
 }
 
-func (f *BackendConnManager) queryInTxn(ctx context.Context, sql string) (*gomysql.Result, error) {
+func (f *BackendConnManager) queryInTxn(ctx context.Context, db, sql string) (*gomysql.Result, error) {
+	if err := f.txnConn.UseDB(db); err != nil {
+		return nil, err
+	}
 	return f.txnConn.Execute(sql)
 }
 
@@ -95,6 +110,18 @@ func (f *BackendConnManager) releaseAttachedConn(err error) {
 		f.txnConn.PutBack()
 	}
 	f.txnConn = nil
+}
+
+func (f *BackendConnManager) isInTransaction() bool {
+	return (f.state & FSMStateFlagInTransaction) != 0
+}
+
+func (f *BackendConnManager) isAutoCommit() bool {
+	return (f.state & FSMStateFlagIsAutoCommit) != 0
+}
+
+func (f *BackendConnManager) isInPrepare() bool {
+	return (f.state & FSMStateFlagInPrepare) != 0
 }
 
 func errClosePooledBackendConn(conn PooledBackendConn, ns string) {

@@ -24,6 +24,12 @@ const (
 )
 
 const (
+	FSMStateFlagInTransaction = 0x01
+	FSMStateFlagIsAutoCommit  = 0x02
+	FSMStateFlagInPrepare     = 0x04
+)
+
+const (
 	stateInitial = State2
 )
 
@@ -39,6 +45,16 @@ const (
 	EventStmtForwardData // execute, reset, send_long_data
 	EventStmtClose
 )
+
+var globalFSM = NewFSM()
+
+func init() {
+	globalFSM.Init()
+}
+
+func getGlobalFSM() *FSM {
+	return globalFSM
+}
 
 type FSM struct {
 	handlersV2 map[FSMState]map[FSMEvent]*FSMHandlerWrapper
@@ -129,8 +145,9 @@ func (q *FSM) getActionV2(state FSMState, event FSMEvent) (*FSMHandlerWrapper, b
 }
 
 func fsmHandler_Transaction_EventQuery(b *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error) {
-	sql := args[0].(string)
-	return b.queryInTxn(ctx, sql)
+	db := args[0].(string)
+	sql := args[1].(string)
+	return b.queryInTxn(ctx, db, sql)
 }
 
 func fsmHandler_State0_EventBegin(b *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error) {
@@ -162,8 +179,9 @@ func fsmHandler_State1_EventEnableAutoCommit(b *BackendConnManager, ctx context.
 }
 
 func fsmHandler_NoTransaction_EventQuery(b *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error) {
-	sql := args[0].(string)
-	return b.queryWithoutTxn(ctx, sql)
+	db := args[0].(string)
+	sql := args[1].(string)
+	return b.queryWithoutTxn(ctx, db, sql)
 }
 
 func fsmHandler_State2_EventDisableAutoCommit(b *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error) {
