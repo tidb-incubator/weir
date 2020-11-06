@@ -187,6 +187,7 @@ func (a *AttachedConnHolder) StmtPrepare(ctx context.Context, sql string) (Stmt,
 		return nil, err
 	}
 
+	// may be autocommit and not in txn
 	stmt, err := a.txnConn.StmtPrepare(sql)
 	if err != nil {
 		return nil, err
