@@ -68,19 +68,21 @@ func (f *BackendConnManager) queryWithoutTxn(ctx context.Context, sql string) (*
 	return conn.Execute(sql)
 }
 
-func (f *BackendConnManager) handleReleaseTxnConn(err error) {
+func (f *BackendConnManager) queryInTxn(ctx context.Context, sql string) (*gomysql.Result, error) {
+	return f.txnConn.Execute(sql)
+}
+
+func (f *BackendConnManager) releaseAttachedConn(err error) {
 	if err != nil {
-		if errClose := f.txnConn.ErrorClose(); errClose != nil {
-			logutil.BgLogger().Error("close backend conn error", zap.Error(err), zap.String("namespace", f.ns.Name()))
-		}
+		errClosePooledBackendConn(f.txnConn, f.ns.Name())
 	} else {
 		f.txnConn.PutBack()
 	}
+	f.txnConn = nil
 }
 
-func fsmHandler_State0_EventEnableAutoCommit(f *BackendConnManager, ctx context.Context, args ...interface{}) (*gomysql.Result, error) {
-	// in state0, txnConn must be non nil
-	err := f.txnConn.SetAutoCommit(true)
-	f.handleReleaseTxnConn(err)
-	return nil, err
+func errClosePooledBackendConn(conn PooledBackendConn, ns string) {
+	if err := conn.ErrorClose(); err != nil {
+		logutil.BgLogger().Error("close backend conn error", zap.Error(err), zap.String("namespace", ns))
+	}
 }
