@@ -139,10 +139,6 @@ func (a *AttachedConnHolder) ExecuteQuery(ctx context.Context, query func(ctx co
 	defer a.txnLock.Unlock()
 
 	var err error
-	defer func() {
-		a.postUseTxnConn(err)
-	}()
-
 	if err = a.initTxnConn(ctx); err != nil {
 		return nil, err
 	}
@@ -205,10 +201,6 @@ func (a *AttachedConnHolder) StmtExecuteForward(stmtId int, data []byte) (*gomys
 	defer a.txnLock.Unlock()
 
 	var err error
-	defer func() {
-		a.postUseTxnConn(err)
-	}()
-
 	if !a.prepareStmtHolder.isStmtIdExist(stmtId) {
 		err = errors.New("stmt id not found")
 		return nil, err
