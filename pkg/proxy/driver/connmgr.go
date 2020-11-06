@@ -76,7 +76,9 @@ func (f *BackendConnManager) Close() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	errClosePooledBackendConn(f.txnConn, f.ns.Name())
+	if f.txnConn != nil {
+		errClosePooledBackendConn(f.txnConn, f.ns.Name())
+	}
 	f.state = stateInitial
 	f.txnConn = nil
 	return nil
