@@ -36,7 +36,7 @@ type QueryCtxImpl struct {
 	parser      *parser.Parser
 	sessionVars *SessionVarsWrapper
 
-	attachedConn *AttachedConnHolder
+	connMgr *BackendConnManager
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
@@ -111,22 +111,25 @@ func (q *QueryCtxImpl) SetClientCapability(capability uint32) {
 }
 
 func (q *QueryCtxImpl) Prepare(ctx context.Context, sql string) (stmtId int, columns, params []*server.ColumnInfo, err error) {
-	stmt, err := q.attachedConn.StmtPrepare(ctx, sql)
-	if err != nil {
-		return -1, nil, nil, err
-	}
-
-	columns = createBinaryPrepareColumns(stmt.ColumnNum())
-	params = createBinaryPrepareParams(stmt.ParamNum())
-	return stmt.ID(), columns, params, nil
+	panic("unimplemented")
+	//stmt, err := q.attachedConn.StmtPrepare(ctx, sql)
+	//if err != nil {
+	//	return -1, nil, nil, err
+	//}
+	//
+	//columns = createBinaryPrepareColumns(stmt.ColumnNum())
+	//params = createBinaryPrepareParams(stmt.ParamNum())
+	//return stmt.ID(), columns, params, nil
 }
 
 func (q *QueryCtxImpl) StmtExecuteForward(stmtId int, data []byte) (*gomysql.Result, error) {
-	return q.attachedConn.StmtExecuteForward(stmtId, data)
+	panic("unimplemented")
+	//return q.attachedConn.StmtExecuteForward(stmtId, data)
 }
 
 func (q *QueryCtxImpl) StmtClose(stmtId int) error {
-	return q.attachedConn.StmtClose(stmtId)
+	panic("unimplemented")
+	//return q.attachedConn.StmtClose(stmtId)
 }
 
 func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error) {
@@ -151,7 +154,7 @@ func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error)
 
 // TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) Close() error {
-	return q.attachedConn.Close()
+	return q.connMgr.Close()
 }
 
 func (q *QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bool {
@@ -183,6 +186,6 @@ func (*QueryCtxImpl) SetSessionManager(util.SessionManager) {
 }
 
 func (q *QueryCtxImpl) initAttachedConnHolder() {
-	attachedConn := NewAttachedConnHolder(q.ns)
-	q.attachedConn = attachedConn
+	connMgr := NewBackendConnManager(getGlobalFSM(), q.ns)
+	q.connMgr = connMgr
 }
