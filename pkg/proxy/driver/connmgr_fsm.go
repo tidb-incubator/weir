@@ -367,3 +367,15 @@ func fsmHandler_ReleaseConn_EventStmtClose(b *BackendConnManager, ctx context.Co
 	b.isPrepared = false
 	return nil, err
 }
+
+func (f FSMState) IsAutoCommit() bool {
+	return (f & FSMStateFlagIsAutoCommit) != 0
+}
+
+func (f FSMState) IsInTransaction() bool {
+	return (f & FSMStateFlagInTransaction) != 0
+}
+
+func (f FSMState) IsPrepare() bool {
+	return (f & FSMStateFlagInPrepare) != 0
+}

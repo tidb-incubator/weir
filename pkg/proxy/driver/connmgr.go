@@ -36,8 +36,8 @@ func (f *BackendConnManager) MergeStatus(svw *SessionVarsWrapper) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	svw.SetStatusFlag(mysql.ServerStatusInTrans, f.isInTransaction())
-	svw.SetStatusFlag(mysql.ServerStatusAutocommit, f.isAutoCommit())
+	svw.SetStatusFlag(mysql.ServerStatusInTrans, f.state.IsInTransaction())
+	svw.SetStatusFlag(mysql.ServerStatusAutocommit, f.state.IsAutoCommit())
 }
 
 func (f *BackendConnManager) Query(ctx context.Context, db, sql string) (*gomysql.Result, error) {
@@ -154,18 +154,6 @@ func (f *BackendConnManager) releaseAttachedConn(err error) {
 		f.txnConn.PutBack()
 	}
 	f.txnConn = nil
-}
-
-func (f *BackendConnManager) isInTransaction() bool {
-	return (f.state & FSMStateFlagInTransaction) != 0
-}
-
-func (f *BackendConnManager) isAutoCommit() bool {
-	return (f.state & FSMStateFlagIsAutoCommit) != 0
-}
-
-func (f *BackendConnManager) isInPrepare() bool {
-	return (f.state & FSMStateFlagInPrepare) != 0
 }
 
 func errClosePooledBackendConn(conn PooledBackendConn, ns string) {
