@@ -1692,7 +1692,7 @@ func (b *BackendConnManagerTestSuite) Test_State7_StmtPrepare_Error_StmtPrepare(
 	tc.Run()
 }
 
-// run StmtExecute in State0 to State3 will return fms action not allowed error
+// run StmtExecute in State0 to State3 will return fsm action not allowed error
 // so we skip these cases
 func (b *BackendConnManagerTestSuite) Test_State4_StmtExecute_Success() {
 	tc := &BackendConnManagerTestCase{
@@ -1836,6 +1836,157 @@ func (b *BackendConnManagerTestSuite) Test_State7_StmtExecute_Error_StmtExecuteF
 			_, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
+		},
+	}
+
+	tc.Run()
+}
+
+// run StmtExecute in State0 to State3 will return fsm action not allowed error
+// so we skip these cases
+func (b *BackendConnManagerTestSuite) Test_State4_StmtClose_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtClosePrepare", testStmtID).Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.StmtClose(ctx, testStmtID)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "StmtClosePrepare", testStmtID)
+		},
+	}
+
+	tc.Run()
+}
+
+// currently we force close all prepared statements
+func (b *BackendConnManagerTestSuite) Test_State4_StmtClose_Error_StmtClosePrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtClosePrepare", testStmtID).Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.StmtClose(ctx, testStmtID)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtClosePrepare", testStmtID)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_StmtClose_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtClosePrepare", testStmtID).Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.StmtClose(ctx, testStmtID)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "StmtClosePrepare", testStmtID)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_StmtClose_Error_StmtClosePrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtClosePrepare", testStmtID).Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.StmtClose(ctx, testStmtID)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtClosePrepare", testStmtID)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_StmtClose_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtClosePrepare", testStmtID).Return(nil).Once()
+			b.mockConn.On("PutBack").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.StmtClose(ctx, testStmtID)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "StmtClosePrepare", testStmtID)
+			b.mockConn.AssertCalled(b.T(), "PutBack")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_StmtClose_Error_StmtClosePrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtClosePrepare", testStmtID).Return(connmgrMockError).Once()
+			b.mockConn.On("ErrorClose").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.StmtClose(ctx, testStmtID)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtClosePrepare", testStmtID)
+			b.mockConn.AssertCalled(b.T(), "ErrorClose")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_StmtClose_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtClosePrepare", testStmtID).Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.StmtClose(ctx, testStmtID)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "StmtClosePrepare", testStmtID)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_StmtClose_Error_StmtClose() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtClosePrepare", testStmtID).Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.StmtClose(ctx, testStmtID)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtClosePrepare", testStmtID)
 		},
 	}
 
