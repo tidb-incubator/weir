@@ -79,14 +79,15 @@ type BackendConnManagerTestCase struct {
 	CurrentState FSMState
 	TargetState  FSMState
 
-	Prepare      func()
-	RunAndAssert func()
+	Prepare      func(ctx context.Context)
+	RunAndAssert func(ctx context.Context)
 }
 
 func (b *BackendConnManagerTestCase) Run() {
+	ctx := context.Background()
 	b.suite.prepareConnMgrStatus(b.CurrentState)
-	b.Prepare()
-	b.RunAndAssert()
+	b.Prepare(ctx)
+	b.RunAndAssert(ctx)
 	require.Equal(b.suite.T(), b.TargetState, b.suite.mockMgr.state)
 	b.suite.assertConnMgrStatusCorrect(b.TargetState)
 }
@@ -96,11 +97,10 @@ func (b *BackendConnManagerTestSuite) Test_State0_Begin_Success() {
 		suite:        b,
 		CurrentState: State0,
 		TargetState:  State1,
-		Prepare: func() {
+		Prepare: func(ctx context.Context) {
 			b.mockConn.On("Begin").Return(nil).Once()
 		},
-		RunAndAssert: func() {
-			ctx := context.Background()
+		RunAndAssert: func(ctx context.Context) {
 			err := b.mockMgr.Begin(ctx)
 			require.NoError(b.T(), err)
 			b.mockConn.AssertCalled(b.T(), "Begin")
@@ -115,14 +115,105 @@ func (b *BackendConnManagerTestSuite) Test_State0_Begin_Error() {
 		suite:        b,
 		CurrentState: State0,
 		TargetState:  State0,
-		Prepare: func() {
+		Prepare: func(ctx context.Context) {
 			b.mockConn.On("Begin").Return(connmgrMockError).Once()
 		},
-		RunAndAssert: func() {
-			ctx := context.Background()
+		RunAndAssert: func(ctx context.Context) {
 			err := b.mockMgr.Begin(ctx)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "Begin")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State1_Begin_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_Begin_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(b.mockConn, nil)
+			b.mockConn.On("Begin").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.NoError(b.T(), err)
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+			b.mockConn.AssertCalled(b.T(), "Begin")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_Begin_Error_GetPooledConn() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(nil, connmgrMockError)
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_Begin_Error_Begin() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(b.mockConn, nil)
+			b.mockConn.On("Begin").Return(connmgrMockError).Once()
+			b.mockConn.On("ErrorClose").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+			b.mockConn.AssertCalled(b.T(), "Begin")
+			b.mockConn.AssertCalled(b.T(), "ErrorClose")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_Begin_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.NoError(b.T(), err)
 		},
 	}
 
