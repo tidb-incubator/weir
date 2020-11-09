@@ -960,6 +960,238 @@ func (b *BackendConnManagerTestSuite) Test_State7_Commit_Error_Commit() {
 	tc.Run()
 }
 
+func (b *BackendConnManagerTestSuite) Test_State0_DisableAutoCommit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State0,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State1_DisableAutoCommit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_DisableAutoCommit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(b.mockConn, nil).Once()
+			b.mockConn.On("SetAutoCommit", false).Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.NoError(b.T(), err)
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+			b.mockConn.AssertCalled(b.T(), "SetAutoCommit", false)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_DisableAutoCommit_Error_GetPooledConn() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_DisableAutoCommit_Error_SetAutoCommit() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(b.mockConn, nil).Once()
+			b.mockConn.On("SetAutoCommit", false).Return(connmgrMockError).Once()
+			b.mockConn.On("ErrorClose").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+			b.mockConn.AssertCalled(b.T(), "SetAutoCommit", false)
+			b.mockConn.AssertCalled(b.T(), "ErrorClose")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_DisableAutoCommit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("SetAutoCommit", false).Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "SetAutoCommit", false)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_DisableAutoCommit_Error_SetAutoCommit() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("SetAutoCommit", false).Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "SetAutoCommit", false)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State4_DisableAutoCommit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_DisableAutoCommit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_DisableAutoCommit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("SetAutoCommit", false).Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "SetAutoCommit", false)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_DisableAutoCommit_Error_SetAutoCommit() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("SetAutoCommit", false).Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "SetAutoCommit", false)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_DisableAutoCommit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("SetAutoCommit", false).Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "SetAutoCommit", false)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_DisableAutoCommit_Error_SetAutoCommit() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State7,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("SetAutoCommit", false).Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.SetAutoCommit(ctx, false)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "SetAutoCommit", false)
+		},
+	}
+
+	tc.Run()
+}
+
 func TestBackendConnManagerTestSuite(t *testing.T) {
 	suite.Run(t, new(BackendConnManagerTestSuite))
 }
