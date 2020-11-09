@@ -49,6 +49,8 @@ const (
 	EventStmtClose
 )
 
+var ErrFsmActionNowAllowed = errors.New("fsm action not allowed")
+
 var globalFSM = NewFSM()
 
 func init() {
@@ -90,7 +92,7 @@ func noopHandler(conn *BackendConnManager, ctx context.Context, args ...interfac
 }
 
 func errHandler(conn *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error) {
-	return nil, errors.New("fsm action not allowed")
+	return nil, ErrFsmActionNowAllowed
 }
 
 func NewFSM() *FSM {

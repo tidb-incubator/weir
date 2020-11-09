@@ -11,13 +11,13 @@ import (
 )
 
 const (
-	testDB  = "test_db"
-	testSQL = "SELECT * FROM test_tbl"
+	testDB     = "test_db"
+	testSQL    = "SELECT * FROM test_tbl"
 	testStmtID = 1
 )
 
 var queryResult = &gomysql.Result{}
-
+var stmtExecData = []byte("exec")
 var connmgrMockError = errors.New("mock error")
 
 type BackendConnManagerTestSuite struct {
@@ -1606,7 +1606,7 @@ func (b *BackendConnManagerTestSuite) Test_State4_StmtPrepare_Error_StmtPrepare(
 		CurrentState: State4,
 		TargetState:  State4,
 		Prepare: func(ctx context.Context) {
-			b.mockConn.On("StmtPrepare", testSQL).Return( nil,connmgrMockError).Once()
+			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
 			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
@@ -1643,7 +1643,7 @@ func (b *BackendConnManagerTestSuite) Test_State5_StmtPrepare_Error_StmtPrepare(
 		CurrentState: State5,
 		TargetState:  State5,
 		Prepare: func(ctx context.Context) {
-			b.mockConn.On("StmtPrepare", testSQL).Return( nil,connmgrMockError).Once()
+			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
 			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
@@ -1680,12 +1680,162 @@ func (b *BackendConnManagerTestSuite) Test_State7_StmtPrepare_Error_StmtPrepare(
 		CurrentState: State7,
 		TargetState:  State7,
 		Prepare: func(ctx context.Context) {
-			b.mockConn.On("StmtPrepare", testSQL).Return( nil,connmgrMockError).Once()
+			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
 			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+// run StmtExecute in State0 to State3 will return fms action not allowed error
+// so we skip these cases
+func (b *BackendConnManagerTestSuite) Test_State4_StmtExecute_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtExecuteForward", stmtExecData).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
+			require.NoError(b.T(), err)
+			require.NotNil(b.T(), ret)
+			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State4_StmtExecute_Error_StmtExecuteForward() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtExecuteForward", stmtExecData).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_StmtExecute_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtExecuteForward", stmtExecData).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
+			require.NoError(b.T(), err)
+			require.NotNil(b.T(), ret)
+			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_StmtExecute_Error_StmtExecuteForward() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtExecuteForward", stmtExecData).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_StmtExecute_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtExecuteForward", stmtExecData).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
+			require.NoError(b.T(), err)
+			require.NotNil(b.T(), ret)
+			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_StmtExecute_Error_StmtExecuteForward() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtExecuteForward", stmtExecData).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_StmtExecute_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State7,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtExecuteForward", stmtExecData).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
+			require.NoError(b.T(), err)
+			require.NotNil(b.T(), ret)
+			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_StmtExecute_Error_StmtExecuteForward() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State7,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtExecuteForward", stmtExecData).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtExecuteForward(ctx, testStmtID, stmtExecData)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtExecuteForward", stmtExecData)
 		},
 	}
 
