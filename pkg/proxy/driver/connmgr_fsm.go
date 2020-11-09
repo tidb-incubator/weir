@@ -325,13 +325,15 @@ func fsmHandler_NoPrepare_WithAttachedConn_EventStmtPrepare(b *BackendConnManage
 	return stmt, nil
 }
 
+// TODO(eastfisher): currently we don't change db
 func fsmHandler_NoPrepare_PreFetchConn_EventStmtPrepare(b *BackendConnManager, ctx context.Context, args ...interface{}) (Stmt, error) {
 	conn, err := b.ns.GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	stmt, err := fsmHandler_IsPrepare_EventStmtPrepare(b, ctx, args...)
+	sql := args[0].(string)
+	stmt, err := conn.StmtPrepare(sql)
 	if err != nil {
 		errClosePooledBackendConn(conn, b.ns.Name())
 		return nil, err

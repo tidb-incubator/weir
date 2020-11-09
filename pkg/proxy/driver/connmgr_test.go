@@ -13,6 +13,7 @@ import (
 const (
 	testDB  = "test_db"
 	testSQL = "SELECT * FROM test_tbl"
+	testStmtID = 1
 )
 
 var queryResult = &gomysql.Result{}
@@ -25,6 +26,7 @@ type BackendConnManagerTestSuite struct {
 	mockConn *MockPooledBackendConn
 	mockNs   *MockNamespace
 	mockMgr  *BackendConnManager
+	mockStmt *MockStmt
 }
 
 func (b *BackendConnManagerTestSuite) SetupSuite() {
@@ -33,6 +35,8 @@ func (b *BackendConnManagerTestSuite) SetupSuite() {
 func (b *BackendConnManagerTestSuite) SetupTest() {
 	b.mockConn = new(MockPooledBackendConn)
 	b.mockNs = new(MockNamespace)
+	b.mockStmt = new(MockStmt)
+	b.mockStmt.On("ID").Return(testStmtID)
 	b.mockNs.On("Name").Return("mock_namespace")
 	b.mockMgr = NewBackendConnManager(getGlobalFSM(), b.mockNs)
 }
@@ -1398,6 +1402,290 @@ func (b *BackendConnManagerTestSuite) Test_State7_EnableAutoCommit_Success() {
 		RunAndAssert: func(ctx context.Context) {
 			err := b.mockMgr.SetAutoCommit(ctx, true)
 			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State0_StmtPrepare_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State0,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.NoError(b.T(), err)
+			require.Equal(b.T(), testStmtID, stmt.ID())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State0_StmtPrepare_Error_StmtPrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State0,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State1_StmtPrepare_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.NoError(b.T(), err)
+			require.Equal(b.T(), testStmtID, stmt.ID())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State1_StmtPrepare_Error_StmtPrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_StmtPrepare_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(b.mockConn, nil).Once()
+			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.NoError(b.T(), err)
+			require.Equal(b.T(), testStmtID, stmt.ID())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_StmtPrepare_Error_GetPooledConn() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_StmtPrepare_Error_StmtPrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(b.mockConn, nil).Once()
+			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
+			b.mockConn.On("ErrorClose").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+			b.mockConn.AssertCalled(b.T(), "ErrorClose")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_StmtPrepare_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State7,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.NoError(b.T(), err)
+			require.Equal(b.T(), testStmtID, stmt.ID())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_StmtPrepare_Error_StmtPrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+// prepare in autocommit=0 cannot start a new transaction
+func (b *BackendConnManagerTestSuite) Test_State4_StmtPrepare_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.NoError(b.T(), err)
+			require.Equal(b.T(), testStmtID, stmt.ID())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State4_StmtPrepare_Error_StmtPrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return( nil,connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_StmtPrepare_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.NoError(b.T(), err)
+			require.Equal(b.T(), testStmtID, stmt.ID())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_StmtPrepare_Error_StmtPrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return( nil,connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_StmtPrepare_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.NoError(b.T(), err)
+			require.Equal(b.T(), testStmtID, stmt.ID())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_StmtPrepare_Error_StmtPrepare() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State7,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("StmtPrepare", testSQL).Return( nil,connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
 		},
 	}
 
