@@ -100,80 +100,80 @@ func NewFSM() *FSM {
 
 func (q *FSM) Init() {
 	// in state0, txnConn must be non nil, so we don't check txnConn nil in handlers
-	q.MustRegisterActionV2(State0, State0, EventDisableAutoCommit, false, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State0, State0, EventCommitOrRollback, false, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State0, State1, EventBegin, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventBegin))
-	q.MustRegisterActionV2(State0, State1, EventQuery, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
-	q.MustRegisterActionV2(State0, State2, EventEnableAutoCommit, true, FSMHandlerFunc(fsmHandler_PostReleaseConn_EventEnableAutoCommit))
-	q.MustRegisterActionV2(State0, State4, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_NoPrepare_WithAttachedConn_EventStmtPrepare))
-	q.MustRegisterActionV2(State0, State0, EventStmtForwardData, true, FSMHandlerFunc(errHandler)) // TODO(eastfisher): test
-	q.MustRegisterActionV2(State0, State0, EventStmtClose, true, FSMHandlerFunc(noopHandler))      // TODO(eastfisher): test
+	q.MustRegisterHandler(State0, State0, EventDisableAutoCommit, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State0, State0, EventCommitOrRollback, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State0, State1, EventBegin, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventBegin))
+	q.MustRegisterHandler(State0, State1, EventQuery, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
+	q.MustRegisterHandler(State0, State2, EventEnableAutoCommit, true, FSMHandlerFunc(fsmHandler_PostReleaseConn_EventEnableAutoCommit))
+	q.MustRegisterHandler(State0, State4, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_NoPrepare_WithAttachedConn_EventStmtPrepare))
+	q.MustRegisterHandler(State0, State0, EventStmtForwardData, true, FSMHandlerFunc(errHandler)) // TODO(eastfisher): test
+	q.MustRegisterHandler(State0, State0, EventStmtClose, true, FSMHandlerFunc(noopHandler))      // TODO(eastfisher): test
 
-	q.MustRegisterActionV2(State1, State1, EventDisableAutoCommit, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State1, State1, EventBegin, false, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State1, State1, EventQuery, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
+	q.MustRegisterHandler(State1, State1, EventDisableAutoCommit, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State1, State1, EventBegin, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State1, State1, EventQuery, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
 	// TODO(eastfisher): commit error may cause state infinite loop!
 	// TODO(eastfisher): upper layer should recognize network error and then close queryctx.
-	q.MustRegisterActionV2(State1, State0, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventCommitOrRollback))
-	q.MustRegisterActionV2(State1, State3, EventEnableAutoCommit, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventEnableAutoCommit))
-	q.MustRegisterActionV2(State1, State5, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_NoPrepare_WithAttachedConn_EventStmtPrepare))
-	q.MustRegisterActionV2(State1, State1, EventStmtForwardData, true, FSMHandlerFunc(errHandler)) // TODO(eastfisher): test // ERROR 1243 (HY000): Unknown prepared statement handler (10) given to mysqld_stmt_execute
-	q.MustRegisterActionV2(State1, State1, EventStmtClose, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State1, State0, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventCommitOrRollback))
+	q.MustRegisterHandler(State1, State3, EventEnableAutoCommit, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventEnableAutoCommit))
+	q.MustRegisterHandler(State1, State5, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_NoPrepare_WithAttachedConn_EventStmtPrepare))
+	q.MustRegisterHandler(State1, State1, EventStmtForwardData, true, FSMHandlerFunc(errHandler)) // TODO(eastfisher): test // ERROR 1243 (HY000): Unknown prepared statement handler (10) given to mysqld_stmt_execute
+	q.MustRegisterHandler(State1, State1, EventStmtClose, true, FSMHandlerFunc(noopHandler))
 
-	q.MustRegisterActionV2(State2, State2, EventEnableAutoCommit, false, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State2, State2, EventCommitOrRollback, false, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State2, State2, EventQuery, false, FSMHandlerFunc(fsmHandler_ConnPool_EventQuery))
-	q.MustRegisterActionV2(State2, State0, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_PreFetchConn_EventDisableAutoCommit))
-	q.MustRegisterActionV2(State2, State3, EventBegin, false, FSMHandlerFunc(fsmHandler_PreFetchConn_EventBegin))
-	q.MustRegisterActionV2(State2, State6, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_NoPrepare_PreFetchConn_EventStmtPrepare))
-	q.MustRegisterActionV2(State2, State2, EventStmtForwardData, true, FSMHandlerFunc(errHandler)) // TODO(eastfisher): test
-	q.MustRegisterActionV2(State2, State2, EventStmtClose, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State2, State2, EventEnableAutoCommit, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State2, State2, EventCommitOrRollback, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State2, State2, EventQuery, false, FSMHandlerFunc(fsmHandler_ConnPool_EventQuery))
+	q.MustRegisterHandler(State2, State0, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_PreFetchConn_EventDisableAutoCommit))
+	q.MustRegisterHandler(State2, State3, EventBegin, false, FSMHandlerFunc(fsmHandler_PreFetchConn_EventBegin))
+	q.MustRegisterHandler(State2, State6, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_NoPrepare_PreFetchConn_EventStmtPrepare))
+	q.MustRegisterHandler(State2, State2, EventStmtForwardData, true, FSMHandlerFunc(errHandler)) // TODO(eastfisher): test
+	q.MustRegisterHandler(State2, State2, EventStmtClose, true, FSMHandlerFunc(noopHandler))
 
-	q.MustRegisterActionV2(State3, State3, EventEnableAutoCommit, false, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State3, State3, EventBegin, false, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State3, State3, EventQuery, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
-	q.MustRegisterActionV2(State3, State1, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventDisableAutoCommit))
-	q.MustRegisterActionV2(State3, State2, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_PostReleaseConn_EventCommitOrRollback))
-	q.MustRegisterActionV2(State3, State7, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_NoPrepare_WithAttachedConn_EventStmtPrepare))
-	q.MustRegisterActionV2(State3, State3, EventStmtForwardData, true, FSMHandlerFunc(errHandler)) // TODO(eastfisher): test
-	q.MustRegisterActionV2(State3, State3, EventStmtClose, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State3, State3, EventEnableAutoCommit, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State3, State3, EventBegin, false, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State3, State3, EventQuery, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
+	q.MustRegisterHandler(State3, State1, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventDisableAutoCommit))
+	q.MustRegisterHandler(State3, State2, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_PostReleaseConn_EventCommitOrRollback))
+	q.MustRegisterHandler(State3, State7, EventStmtPrepare, false, FSMStmtPrepareHandlerFunc(fsmHandler_NoPrepare_WithAttachedConn_EventStmtPrepare))
+	q.MustRegisterHandler(State3, State3, EventStmtForwardData, true, FSMHandlerFunc(errHandler)) // TODO(eastfisher): test
+	q.MustRegisterHandler(State3, State3, EventStmtClose, true, FSMHandlerFunc(noopHandler))
 
-	q.MustRegisterActionV2(State4, State4, EventStmtPrepare, true, FSMStmtPrepareHandlerFunc(fsmHandler_IsPrepare_EventStmtPrepare))
-	q.MustRegisterActionV2(State4, State5, EventStmtForwardData, false, FSMHandlerFunc(fsmHandler_IsPrepare_EventStmtForwardData))
-	q.MustRegisterActionV2(State4, State0, EventStmtClose, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventStmtClose))
-	//q.MustRegisterActionV2(State4, State4, EventStmtClose, true, nil)  // FIXME(eastfisher): stmt close success may change to State4 or State0
-	q.MustRegisterActionV2(State4, State5, EventBegin, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventBegin))
-	q.MustRegisterActionV2(State4, State4, EventCommitOrRollback, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State4, State4, EventDisableAutoCommit, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State4, State6, EventEnableAutoCommit, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventEnableAutoCommit))
-	q.MustRegisterActionV2(State4, State5, EventQuery, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
+	q.MustRegisterHandler(State4, State4, EventStmtPrepare, true, FSMStmtPrepareHandlerFunc(fsmHandler_IsPrepare_EventStmtPrepare))
+	q.MustRegisterHandler(State4, State5, EventStmtForwardData, false, FSMHandlerFunc(fsmHandler_IsPrepare_EventStmtForwardData))
+	q.MustRegisterHandler(State4, State0, EventStmtClose, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventStmtClose))
+	//q.MustRegisterHandler(State4, State4, EventStmtClose, true, nil)  // FIXME(eastfisher): stmt close success may change to State4 or State0
+	q.MustRegisterHandler(State4, State5, EventBegin, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventBegin))
+	q.MustRegisterHandler(State4, State4, EventCommitOrRollback, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State4, State4, EventDisableAutoCommit, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State4, State6, EventEnableAutoCommit, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventEnableAutoCommit))
+	q.MustRegisterHandler(State4, State5, EventQuery, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
 
-	q.MustRegisterActionV2(State5, State5, EventStmtPrepare, true, FSMStmtPrepareHandlerFunc(fsmHandler_IsPrepare_EventStmtPrepare))
-	q.MustRegisterActionV2(State5, State5, EventStmtForwardData, true, FSMHandlerFunc(fsmHandler_IsPrepare_EventStmtForwardData))
-	q.MustRegisterActionV2(State5, State1, EventStmtClose, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventStmtClose))
-	q.MustRegisterActionV2(State5, State5, EventBegin, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State5, State4, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventCommitOrRollback))
-	q.MustRegisterActionV2(State5, State5, EventDisableAutoCommit, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State5, State7, EventEnableAutoCommit, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventEnableAutoCommit))
-	q.MustRegisterActionV2(State5, State5, EventQuery, true, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
+	q.MustRegisterHandler(State5, State5, EventStmtPrepare, true, FSMStmtPrepareHandlerFunc(fsmHandler_IsPrepare_EventStmtPrepare))
+	q.MustRegisterHandler(State5, State5, EventStmtForwardData, true, FSMHandlerFunc(fsmHandler_IsPrepare_EventStmtForwardData))
+	q.MustRegisterHandler(State5, State1, EventStmtClose, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventStmtClose))
+	q.MustRegisterHandler(State5, State5, EventBegin, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State5, State4, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventCommitOrRollback))
+	q.MustRegisterHandler(State5, State5, EventDisableAutoCommit, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State5, State7, EventEnableAutoCommit, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventEnableAutoCommit))
+	q.MustRegisterHandler(State5, State5, EventQuery, true, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
 
-	q.MustRegisterActionV2(State6, State6, EventStmtPrepare, true, FSMStmtPrepareHandlerFunc(fsmHandler_IsPrepare_EventStmtPrepare))
-	q.MustRegisterActionV2(State6, State6, EventStmtForwardData, true, FSMHandlerFunc(fsmHandler_IsPrepare_EventStmtForwardData))
-	q.MustRegisterActionV2(State6, State2, EventStmtClose, true, FSMHandlerFunc(fsmHandler_ReleaseConn_EventStmtClose))
-	q.MustRegisterActionV2(State6, State7, EventBegin, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventBegin))
-	q.MustRegisterActionV2(State6, State6, EventCommitOrRollback, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State6, State4, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventDisableAutoCommit))
-	q.MustRegisterActionV2(State6, State6, EventEnableAutoCommit, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State6, State6, EventQuery, true, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
+	q.MustRegisterHandler(State6, State6, EventStmtPrepare, true, FSMStmtPrepareHandlerFunc(fsmHandler_IsPrepare_EventStmtPrepare))
+	q.MustRegisterHandler(State6, State6, EventStmtForwardData, true, FSMHandlerFunc(fsmHandler_IsPrepare_EventStmtForwardData))
+	q.MustRegisterHandler(State6, State2, EventStmtClose, true, FSMHandlerFunc(fsmHandler_ReleaseConn_EventStmtClose))
+	q.MustRegisterHandler(State6, State7, EventBegin, false, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventBegin))
+	q.MustRegisterHandler(State6, State6, EventCommitOrRollback, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State6, State4, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventDisableAutoCommit))
+	q.MustRegisterHandler(State6, State6, EventEnableAutoCommit, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State6, State6, EventQuery, true, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
 
-	q.MustRegisterActionV2(State7, State7, EventStmtPrepare, true, FSMStmtPrepareHandlerFunc(fsmHandler_IsPrepare_EventStmtPrepare))
-	q.MustRegisterActionV2(State7, State7, EventStmtForwardData, true, FSMHandlerFunc(fsmHandler_IsPrepare_EventStmtForwardData))
-	q.MustRegisterActionV2(State7, State3, EventStmtClose, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventStmtClose))
-	q.MustRegisterActionV2(State7, State7, EventBegin, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State7, State6, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventCommitOrRollback))
-	q.MustRegisterActionV2(State7, State5, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventDisableAutoCommit))
-	q.MustRegisterActionV2(State7, State7, EventEnableAutoCommit, true, FSMHandlerFunc(noopHandler))
-	q.MustRegisterActionV2(State7, State7, EventQuery, true, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
+	q.MustRegisterHandler(State7, State7, EventStmtPrepare, true, FSMStmtPrepareHandlerFunc(fsmHandler_IsPrepare_EventStmtPrepare))
+	q.MustRegisterHandler(State7, State7, EventStmtForwardData, true, FSMHandlerFunc(fsmHandler_IsPrepare_EventStmtForwardData))
+	q.MustRegisterHandler(State7, State3, EventStmtClose, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventStmtClose))
+	q.MustRegisterHandler(State7, State7, EventBegin, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State7, State6, EventCommitOrRollback, true, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventCommitOrRollback))
+	q.MustRegisterHandler(State7, State5, EventDisableAutoCommit, false, FSMHandlerFunc(fsmHandler_NotReleaseConn_EventDisableAutoCommit))
+	q.MustRegisterHandler(State7, State7, EventEnableAutoCommit, true, FSMHandlerFunc(noopHandler))
+	q.MustRegisterHandler(State7, State7, EventQuery, true, FSMHandlerFunc(fsmHandler_WithAttachedConn_EventQuery))
 }
 
 func fsmHandler_IsPrepare_EventStmtForwardData(b *BackendConnManager, ctx context.Context, args ...interface{}) (*mysql.Result, error) {
@@ -182,7 +182,7 @@ func fsmHandler_IsPrepare_EventStmtForwardData(b *BackendConnManager, ctx contex
 	return b.txnConn.StmtExecuteForward(data)
 }
 
-func (q *FSM) MustRegisterActionV2(state FSMState, newState FSMState, event FSMEvent, mustChangeState bool, handler FSMHandler) {
+func (q *FSM) MustRegisterHandler(state FSMState, newState FSMState, event FSMEvent, mustChangeState bool, handler FSMHandler) {
 	handlerWrapper := &FSMHandlerWrapper{
 		NewState:        newState,
 		MustChangeState: mustChangeState,
@@ -200,8 +200,8 @@ func (q *FSM) MustRegisterActionV2(state FSMState, newState FSMState, event FSME
 	q.handlersV2[state][event] = handlerWrapper
 }
 
-func (q *FSM) CallV2(ctx context.Context, event FSMEvent, conn *BackendConnManager, args ...interface{}) (interface{}, error) {
-	action, ok := q.getActionV2(conn.state, event)
+func (q *FSM) Call(ctx context.Context, event FSMEvent, conn *BackendConnManager, args ...interface{}) (interface{}, error) {
+	action, ok := q.getHandler(conn.state, event)
 	if !ok {
 		return nil, fmt.Errorf("fsm handler not found")
 	}
@@ -212,7 +212,7 @@ func (q *FSM) CallV2(ctx context.Context, event FSMEvent, conn *BackendConnManag
 	return ret, err
 }
 
-func (q *FSM) getActionV2(state FSMState, event FSMEvent) (*FSMHandlerWrapper, bool) {
+func (q *FSM) getHandler(state FSMState, event FSMEvent) (*FSMHandlerWrapper, bool) {
 	eventHandlers, ok := q.handlersV2[state]
 	if !ok {
 		return nil, false

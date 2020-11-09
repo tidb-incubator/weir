@@ -44,7 +44,7 @@ func (f *BackendConnManager) Query(ctx context.Context, db, sql string) (*gomysq
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	ret, err := f.fsm.CallV2(ctx, EventQuery, f, db, sql)
+	ret, err := f.fsm.Call(ctx, EventQuery, f, db, sql)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +57,9 @@ func (f *BackendConnManager) SetAutoCommit(ctx context.Context, autocommit bool)
 
 	var err error
 	if autocommit {
-		_, err = f.fsm.CallV2(ctx, EventEnableAutoCommit, f)
+		_, err = f.fsm.Call(ctx, EventEnableAutoCommit, f)
 	} else {
-		_, err = f.fsm.CallV2(ctx, EventDisableAutoCommit, f)
+		_, err = f.fsm.Call(ctx, EventDisableAutoCommit, f)
 	}
 	return err
 }
@@ -68,7 +68,7 @@ func (f *BackendConnManager) Begin(ctx context.Context) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	_, err := f.fsm.CallV2(ctx, EventBegin, f)
+	_, err := f.fsm.Call(ctx, EventBegin, f)
 	return err
 }
 
@@ -76,7 +76,7 @@ func (f *BackendConnManager) CommitOrRollback(ctx context.Context, commit bool) 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	_, err := f.fsm.CallV2(ctx, EventCommitOrRollback, f, commit)
+	_, err := f.fsm.Call(ctx, EventCommitOrRollback, f, commit)
 	return err
 }
 
@@ -84,7 +84,7 @@ func (f *BackendConnManager) StmtPrepare(ctx context.Context, sql string) (Stmt,
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	ret, err := f.fsm.CallV2(ctx, EventStmtPrepare, f, sql)
+	ret, err := f.fsm.Call(ctx, EventStmtPrepare, f, sql)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (f *BackendConnManager) StmtExecuteForward(ctx context.Context, stmtId int,
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	ret, err := f.fsm.CallV2(ctx, EventStmtForwardData, f, stmtId, data)
+	ret, err := f.fsm.Call(ctx, EventStmtForwardData, f, stmtId, data)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (f *BackendConnManager) StmtClose(ctx context.Context, stmtId int) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	_, err := f.fsm.CallV2(ctx, EventStmtClose, f, stmtId)
+	_, err := f.fsm.Call(ctx, EventStmtClose, f, stmtId)
 	return err
 }
 
