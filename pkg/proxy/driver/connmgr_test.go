@@ -704,6 +704,262 @@ func (b *BackendConnManagerTestSuite) Test_State7_Query_Error_Execute() {
 	tc.Run()
 }
 
+func (b *BackendConnManagerTestSuite) Test_State0_Commit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State0,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State1_Commit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Commit").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "Commit")
+		},
+	}
+
+	tc.Run()
+}
+
+// TODO(eastfisher): is it need to rollback?
+func (b *BackendConnManagerTestSuite) Test_State1_Commit_Error_Commit() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Commit").Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "Commit")
+		},
+	}
+
+	tc.Run()
+}
+
+// TODO(eastfisher): is it need to rollback?
+func (b *BackendConnManagerTestSuite) Test_State1_Rollback_Error_Rollback() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Rollback").Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, false)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "Rollback")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_Commit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_Commit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Commit").Return(nil).Once()
+			b.mockConn.On("PutBack").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "Commit")
+			b.mockConn.AssertCalled(b.T(), "PutBack")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_Commit_Error_Commit() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Commit").Return(connmgrMockError).Once()
+			b.mockConn.On("Rollback").Return(nil).Once()
+			b.mockConn.On("ErrorClose").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "Commit")
+			b.mockConn.AssertCalled(b.T(), "Rollback")
+			b.mockConn.AssertCalled(b.T(), "ErrorClose")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_Rollback_Error_Rollback() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Rollback").Return(connmgrMockError).Once()
+			b.mockConn.On("Rollback").Return(nil).Once()
+			b.mockConn.On("ErrorClose").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, false)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "Rollback")
+			b.mockConn.AssertCalled(b.T(), "Rollback")
+			b.mockConn.AssertCalled(b.T(), "ErrorClose")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State4_Commit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_Commit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Commit").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "Commit")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_Commit_Error_Commit() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Commit").Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "Commit")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_Commit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_Commit_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Commit").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "Commit")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_Commit_Error_Commit() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Commit").Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.CommitOrRollback(ctx, true)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "Commit")
+		},
+	}
+
+	tc.Run()
+}
+
 func TestBackendConnManagerTestSuite(t *testing.T) {
 	suite.Run(t, new(BackendConnManagerTestSuite))
 }
