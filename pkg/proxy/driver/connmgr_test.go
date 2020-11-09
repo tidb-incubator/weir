@@ -5,9 +5,17 @@ import (
 	"errors"
 	"testing"
 
+	gomysql "github.com/siddontang/go-mysql/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+const (
+	testDB  = "test_db"
+	testSQL = "SELECT * FROM test_tbl"
+)
+
+var queryResult = &gomysql.Result{}
 
 var connmgrMockError = errors.New("mock error")
 
@@ -327,6 +335,369 @@ func (b *BackendConnManagerTestSuite) Test_State7_Begin_Success() {
 		RunAndAssert: func(ctx context.Context) {
 			err := b.mockMgr.Begin(ctx)
 			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State0_Query_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State0,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.NotNil(b.T(), ret)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State0_Query_Error_Execute() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State0,
+		TargetState:  State0,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State1_Query_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.NotNil(b.T(), ret)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State1_Query_Error_Execute() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State1,
+		TargetState:  State1,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_Query_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(b.mockConn, nil).Once()
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(queryResult, nil).Once()
+			b.mockConn.On("PutBack").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.NotNil(b.T(), ret)
+			require.NoError(b.T(), err)
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+			b.mockConn.AssertCalled(b.T(), "PutBack")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_Query_Error_GetPooledConn() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State2_Query_Error_Execute() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State2,
+		TargetState:  State2,
+		Prepare: func(ctx context.Context) {
+			b.mockNs.On("GetPooledConn", ctx).Return(b.mockConn, nil).Once()
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(nil, connmgrMockError).Once()
+			b.mockConn.On("PutBack").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+			b.mockConn.AssertCalled(b.T(), "PutBack")
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_Query_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.NotNil(b.T(), ret)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State3_Query_Error_Execute() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State3,
+		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State4_Query_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.NotNil(b.T(), ret)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State4_Query_Error_Execute() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_Query_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.NotNil(b.T(), ret)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State5_Query_Error_Execute() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_Query_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.NotNil(b.T(), ret)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State6_Query_Error_Execute() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_Query_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State7,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(queryResult, nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.NotNil(b.T(), ret)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
+		},
+	}
+
+	tc.Run()
+}
+
+func (b *BackendConnManagerTestSuite) Test_State7_Query_Error_Execute() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State7,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("UseDB", testDB).Return(nil).Once()
+			b.mockConn.On("Execute", testSQL).Return(nil, connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			ret, err := b.mockMgr.Query(ctx, testDB, testSQL)
+			require.Nil(b.T(), ret)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "UseDB", testDB)
+			b.mockConn.AssertCalled(b.T(), "Execute", testSQL)
 		},
 	}
 
