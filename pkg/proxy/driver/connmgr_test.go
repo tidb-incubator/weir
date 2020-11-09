@@ -40,6 +40,9 @@ func (b *BackendConnManagerTestSuite) prepareConnMgrStatus(state FSMState) {
 	if !b.mockMgr.state.IsAutoCommit() || b.mockMgr.state.IsInTransaction() || b.mockMgr.state.IsPrepare() {
 		b.mockMgr.txnConn = b.mockConn
 	}
+	if b.mockMgr.state.IsPrepare() {
+		b.mockMgr.isPrepared = true
+	}
 }
 
 func (b *BackendConnManagerTestSuite) assertConnMgrStatusCorrect(state FSMState) {
@@ -63,7 +66,7 @@ func (b *BackendConnManagerTestSuite) assertConnMgrStatusCorrect(state FSMState)
 		require.NotNil(b.T(), b.mockMgr.txnConn)
 		require.True(b.T(), b.mockMgr.isPrepared)
 	case State6:
-		require.Nil(b.T(), b.mockMgr.txnConn)
+		require.NotNil(b.T(), b.mockMgr.txnConn)
 		require.True(b.T(), b.mockMgr.isPrepared)
 	case State7:
 		require.NotNil(b.T(), b.mockMgr.txnConn)
@@ -209,6 +212,116 @@ func (b *BackendConnManagerTestSuite) Test_State3_Begin_Success() {
 		suite:        b,
 		CurrentState: State3,
 		TargetState:  State3,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+// same with State0
+func (b *BackendConnManagerTestSuite) Test_State4_Begin_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Begin").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "Begin")
+		},
+	}
+
+	tc.Run()
+}
+
+// same with State0
+func (b *BackendConnManagerTestSuite) Test_State4_Begin_Error() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State4,
+		TargetState:  State4,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Begin").Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "Begin")
+		},
+	}
+
+	tc.Run()
+}
+
+// same with State1
+func (b *BackendConnManagerTestSuite) Test_State5_Begin_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State5,
+		TargetState:  State5,
+		Prepare: func(ctx context.Context) {
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.NoError(b.T(), err)
+		},
+	}
+
+	tc.Run()
+}
+
+// same with State0
+func (b *BackendConnManagerTestSuite) Test_State6_Begin_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State7,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Begin").Return(nil).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.NoError(b.T(), err)
+			b.mockConn.AssertCalled(b.T(), "Begin")
+		},
+	}
+
+	tc.Run()
+}
+
+// same with State0
+func (b *BackendConnManagerTestSuite) Test_State6_Begin_Error() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State6,
+		TargetState:  State6,
+		Prepare: func(ctx context.Context) {
+			b.mockConn.On("Begin").Return(connmgrMockError).Once()
+		},
+		RunAndAssert: func(ctx context.Context) {
+			err := b.mockMgr.Begin(ctx)
+			require.EqualError(b.T(), err, connmgrMockError.Error())
+			b.mockConn.AssertCalled(b.T(), "Begin")
+		},
+	}
+
+	tc.Run()
+}
+
+// same with State3
+func (b *BackendConnManagerTestSuite) Test_State7_Begin_Success() {
+	tc := &BackendConnManagerTestCase{
+		suite:        b,
+		CurrentState: State7,
+		TargetState:  State7,
 		Prepare: func(ctx context.Context) {
 		},
 		RunAndAssert: func(ctx context.Context) {
