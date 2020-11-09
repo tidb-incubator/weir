@@ -13,15 +13,16 @@ type FSMState int
 type FSMEvent int
 
 const (
+	State0 FSMState = 0x00
+	State1 FSMState = 0x01
+	State2 FSMState = 0x02
+	State3 FSMState = 0x03
+	State4 FSMState = 0x04
+	State5 FSMState = 0x05
+	State6 FSMState = 0x06
+	State7 FSMState = 0x07
+
 	StateUnknown FSMState = -1
-	State0       FSMState = iota
-	State1
-	State2
-	State3
-	State4
-	State5
-	State6
-	State7
 )
 
 const (
