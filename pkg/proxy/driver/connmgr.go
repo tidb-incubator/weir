@@ -80,11 +80,11 @@ func (f *BackendConnManager) CommitOrRollback(ctx context.Context, commit bool) 
 	return err
 }
 
-func (f *BackendConnManager) StmtPrepare(ctx context.Context, sql string) (Stmt, error) {
+func (f *BackendConnManager) StmtPrepare(ctx context.Context, db, sql string) (Stmt, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	ret, err := f.fsm.Call(ctx, EventStmtPrepare, f, sql)
+	ret, err := f.fsm.Call(ctx, EventStmtPrepare, f, db, sql)
 	if err != nil {
 		return nil, err
 	}

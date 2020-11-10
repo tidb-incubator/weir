@@ -228,7 +228,11 @@ func (c *Conn) StmtPrepare(query string) (driver.Stmt, error) {
 	return driver.Stmt(stmt), nil
 }
 
+// TODO(eastfisher): currently only support COM_STMT_EXECUTE
 func (c *Conn) StmtExecuteForward(data []byte) (*Result, error) {
+	writeData := make([]byte, 4, len(data)+5)
+	writeData = append(writeData, COM_STMT_EXECUTE)
+	writeData = append(writeData, data...)
 	c.ResetSequence()
 	if err := c.WritePacket(data); err != nil {
 		return nil, errors.Trace(err)

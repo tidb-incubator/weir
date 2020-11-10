@@ -327,14 +327,20 @@ func fsmHandler_NoPrepare_WithAttachedConn_EventStmtPrepare(b *BackendConnManage
 	return stmt, nil
 }
 
-// TODO(eastfisher): currently we don't change db
 func fsmHandler_NoPrepare_PreFetchConn_EventStmtPrepare(b *BackendConnManager, ctx context.Context, args ...interface{}) (Stmt, error) {
 	conn, err := b.ns.GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	sql := args[0].(string)
+	db := args[0].(string)
+	sql := args[1].(string)
+
+	if err = conn.UseDB(db); err != nil {
+		errClosePooledBackendConn(conn, b.ns.Name())
+		return nil, err
+	}
+
 	stmt, err := conn.StmtPrepare(sql)
 	if err != nil {
 		errClosePooledBackendConn(conn, b.ns.Name())
@@ -346,9 +352,14 @@ func fsmHandler_NoPrepare_PreFetchConn_EventStmtPrepare(b *BackendConnManager, c
 	return stmt, nil
 }
 
-// TODO(eastfisher): currently we don't change db
 func fsmHandler_IsPrepare_EventStmtPrepare(b *BackendConnManager, ctx context.Context, args ...interface{}) (Stmt, error) {
-	sql := args[0].(string)
+	db := args[0].(string)
+	sql := args[1].(string)
+
+	if err := b.txnConn.UseDB(db); err != nil {
+		return nil, err
+	}
+
 	stmt, err := b.txnConn.StmtPrepare(sql)
 	if err != nil {
 		return nil, err

@@ -38,6 +38,7 @@ func (b *BackendConnManagerTestSuite) SetupTest() {
 	b.mockStmt = new(MockStmt)
 	b.mockStmt.On("ID").Return(testStmtID)
 	b.mockNs.On("Name").Return("mock_namespace")
+	b.mockConn.On("UseDB", testDB).Return(nil)
 	b.mockMgr = NewBackendConnManager(getGlobalFSM(), b.mockNs)
 }
 
@@ -1417,7 +1418,7 @@ func (b *BackendConnManagerTestSuite) Test_State0_StmtPrepare_Success() {
 			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.NoError(b.T(), err)
 			require.Equal(b.T(), testStmtID, stmt.ID())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
@@ -1436,7 +1437,7 @@ func (b *BackendConnManagerTestSuite) Test_State0_StmtPrepare_Error_StmtPrepare(
 			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			_, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
 		},
@@ -1454,7 +1455,7 @@ func (b *BackendConnManagerTestSuite) Test_State1_StmtPrepare_Success() {
 			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.NoError(b.T(), err)
 			require.Equal(b.T(), testStmtID, stmt.ID())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
@@ -1473,7 +1474,7 @@ func (b *BackendConnManagerTestSuite) Test_State1_StmtPrepare_Error_StmtPrepare(
 			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			_, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
 		},
@@ -1492,7 +1493,7 @@ func (b *BackendConnManagerTestSuite) Test_State2_StmtPrepare_Success() {
 			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.NoError(b.T(), err)
 			require.Equal(b.T(), testStmtID, stmt.ID())
 			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
@@ -1512,7 +1513,7 @@ func (b *BackendConnManagerTestSuite) Test_State2_StmtPrepare_Error_GetPooledCon
 			b.mockNs.On("GetPooledConn", ctx).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			_, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
 		},
@@ -1532,7 +1533,7 @@ func (b *BackendConnManagerTestSuite) Test_State2_StmtPrepare_Error_StmtPrepare(
 			b.mockConn.On("ErrorClose").Return(nil).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			_, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockNs.AssertCalled(b.T(), "GetPooledConn", ctx)
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
@@ -1552,7 +1553,7 @@ func (b *BackendConnManagerTestSuite) Test_State3_StmtPrepare_Success() {
 			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.NoError(b.T(), err)
 			require.Equal(b.T(), testStmtID, stmt.ID())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
@@ -1571,7 +1572,7 @@ func (b *BackendConnManagerTestSuite) Test_State3_StmtPrepare_Error_StmtPrepare(
 			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			_, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
 		},
@@ -1590,7 +1591,7 @@ func (b *BackendConnManagerTestSuite) Test_State4_StmtPrepare_Success() {
 			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.NoError(b.T(), err)
 			require.Equal(b.T(), testStmtID, stmt.ID())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
@@ -1609,7 +1610,7 @@ func (b *BackendConnManagerTestSuite) Test_State4_StmtPrepare_Error_StmtPrepare(
 			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			_, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
 		},
@@ -1627,7 +1628,7 @@ func (b *BackendConnManagerTestSuite) Test_State5_StmtPrepare_Success() {
 			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.NoError(b.T(), err)
 			require.Equal(b.T(), testStmtID, stmt.ID())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
@@ -1646,7 +1647,7 @@ func (b *BackendConnManagerTestSuite) Test_State5_StmtPrepare_Error_StmtPrepare(
 			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			_, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
 		},
@@ -1664,7 +1665,7 @@ func (b *BackendConnManagerTestSuite) Test_State6_StmtPrepare_Success() {
 			b.mockConn.On("StmtPrepare", testSQL).Return(b.mockStmt, nil).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			stmt, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			stmt, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.NoError(b.T(), err)
 			require.Equal(b.T(), testStmtID, stmt.ID())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
@@ -1683,7 +1684,7 @@ func (b *BackendConnManagerTestSuite) Test_State7_StmtPrepare_Error_StmtPrepare(
 			b.mockConn.On("StmtPrepare", testSQL).Return(nil, connmgrMockError).Once()
 		},
 		RunAndAssert: func(ctx context.Context) {
-			_, err := b.mockMgr.StmtPrepare(ctx, testSQL)
+			_, err := b.mockMgr.StmtPrepare(ctx, testDB, testSQL)
 			require.EqualError(b.T(), err, connmgrMockError.Error())
 			b.mockConn.AssertCalled(b.T(), "StmtPrepare", testSQL)
 		},

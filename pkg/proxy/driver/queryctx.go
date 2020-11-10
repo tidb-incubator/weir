@@ -111,7 +111,7 @@ func (q *QueryCtxImpl) SetClientCapability(capability uint32) {
 }
 
 func (q *QueryCtxImpl) Prepare(ctx context.Context, sql string) (stmtId int, columns, params []*server.ColumnInfo, err error) {
-	stmt, err := q.connMgr.StmtPrepare(ctx, sql)
+	stmt, err := q.connMgr.StmtPrepare(ctx, q.currentDB, sql)
 	if err != nil {
 		return -1, nil, nil, err
 	}
