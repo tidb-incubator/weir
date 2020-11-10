@@ -112,7 +112,7 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 	case mysql.ComStmtFetch:
 		return mysql.NewErrf(mysql.ErrUnknown, "command %d not supported now", cmd)
 	case mysql.ComStmtClose:
-		return cc.handleStmtClose(data)
+		return cc.handleStmtClose(ctx, data)
 	case mysql.ComStmtSendLongData:
 		return cc.handleStmtSendLongData(data)
 	case mysql.ComStmtReset:

@@ -18,13 +18,17 @@ type BackendConnManager struct {
 
 	mu      sync.Mutex
 	txnConn PooledBackendConn
+
+	// TODO: use stmt id set
+	isPrepared bool
 }
 
 func NewBackendConnManager(fsm *FSM, ns Namespace) *BackendConnManager {
 	return &BackendConnManager{
-		fsm:   fsm,
-		state: stateInitial,
-		ns:    ns,
+		fsm:        fsm,
+		state:      stateInitial,
+		ns:         ns,
+		isPrepared: false,
 	}
 }
 
@@ -32,15 +36,19 @@ func (f *BackendConnManager) MergeStatus(svw *SessionVarsWrapper) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	svw.SetStatusFlag(mysql.ServerStatusInTrans, f.isInTransaction())
-	svw.SetStatusFlag(mysql.ServerStatusAutocommit, f.isAutoCommit())
+	svw.SetStatusFlag(mysql.ServerStatusInTrans, f.state.IsInTransaction())
+	svw.SetStatusFlag(mysql.ServerStatusAutocommit, f.state.IsAutoCommit())
 }
 
 func (f *BackendConnManager) Query(ctx context.Context, db, sql string) (*gomysql.Result, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	return f.fsm.CallV2(ctx, EventQuery, f, db, sql)
+	ret, err := f.fsm.Call(ctx, EventQuery, f, db, sql)
+	if err != nil {
+		return nil, err
+	}
+	return ret.(*gomysql.Result), nil
 }
 
 func (f *BackendConnManager) SetAutoCommit(ctx context.Context, autocommit bool) error {
@@ -49,9 +57,9 @@ func (f *BackendConnManager) SetAutoCommit(ctx context.Context, autocommit bool)
 
 	var err error
 	if autocommit {
-		_, err = f.fsm.CallV2(ctx, EventEnableAutoCommit, f)
+		_, err = f.fsm.Call(ctx, EventEnableAutoCommit, f)
 	} else {
-		_, err = f.fsm.CallV2(ctx, EventDisableAutoCommit, f)
+		_, err = f.fsm.Call(ctx, EventDisableAutoCommit, f)
 	}
 	return err
 }
@@ -60,7 +68,7 @@ func (f *BackendConnManager) Begin(ctx context.Context) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	_, err := f.fsm.CallV2(ctx, EventBegin, f)
+	_, err := f.fsm.Call(ctx, EventBegin, f)
 	return err
 }
 
@@ -68,7 +76,40 @@ func (f *BackendConnManager) CommitOrRollback(ctx context.Context, commit bool) 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	_, err := f.fsm.CallV2(ctx, EventCommitOrRollback, f, commit)
+	_, err := f.fsm.Call(ctx, EventCommitOrRollback, f, commit)
+	return err
+}
+
+func (f *BackendConnManager) StmtPrepare(ctx context.Context, db, sql string) (Stmt, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	ret, err := f.fsm.Call(ctx, EventStmtPrepare, f, db, sql)
+	if err != nil {
+		return nil, err
+	}
+	return ret.(Stmt), nil
+}
+
+func (f *BackendConnManager) StmtExecuteForward(ctx context.Context, stmtId int, data []byte) (*gomysql.Result, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	ret, err := f.fsm.Call(ctx, EventStmtForwardData, f, stmtId, data)
+	if err != nil {
+		return nil, err
+	}
+	if ret == nil {
+		return nil, nil
+	}
+	return ret.(*gomysql.Result), nil
+}
+
+func (f *BackendConnManager) StmtClose(ctx context.Context, stmtId int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	_, err := f.fsm.Call(ctx, EventStmtClose, f, stmtId)
 	return err
 }
 
@@ -113,18 +154,6 @@ func (f *BackendConnManager) releaseAttachedConn(err error) {
 		f.txnConn.PutBack()
 	}
 	f.txnConn = nil
-}
-
-func (f *BackendConnManager) isInTransaction() bool {
-	return (f.state & FSMStateFlagInTransaction) != 0
-}
-
-func (f *BackendConnManager) isAutoCommit() bool {
-	return (f.state & FSMStateFlagIsAutoCommit) != 0
-}
-
-func (f *BackendConnManager) isInPrepare() bool {
-	return (f.state & FSMStateFlagInPrepare) != 0
 }
 
 func errClosePooledBackendConn(conn PooledBackendConn, ns string) {

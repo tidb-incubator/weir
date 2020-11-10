@@ -81,7 +81,7 @@ func (cc *clientConn) handleStmtExecute(ctx context.Context, data []byte) error 
 	}
 
 	stmtID := binary.LittleEndian.Uint32(data[0:4])
-	ret, err := cc.ctx.StmtExecuteForward(int(stmtID), data)
+	ret, err := cc.ctx.StmtExecuteForward(ctx, int(stmtID), data)
 	if err != nil {
 		return err
 	}
@@ -104,13 +104,13 @@ func (cc *clientConn) handleStmtReset(data []byte) error {
 	return errors.New("stmt not implemented")
 }
 
-func (cc *clientConn) handleStmtClose(data []byte) error {
+func (cc *clientConn) handleStmtClose(ctx context.Context, data []byte) error {
 	if len(data) < 4 {
 		return nil
 	}
 
 	stmtID := int(binary.LittleEndian.Uint32(data[0:4]))
-	if err := cc.ctx.StmtClose(stmtID); err != nil {
+	if err := cc.ctx.StmtClose(ctx, stmtID); err != nil {
 		return err
 	}
 
