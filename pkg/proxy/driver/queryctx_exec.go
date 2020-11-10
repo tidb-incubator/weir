@@ -113,25 +113,6 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 	return result, nil
 }
 
-func (q *QueryCtxImpl) executeInBackendConn(ctx context.Context, conn PooledBackendConn, db string, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
-	if err := conn.UseDB(db); err != nil {
-		return nil, err
-	}
-
-	result, err := conn.Execute(sql)
-	if err != nil {
-		return nil, err
-	}
-
-	if result.Resultset == nil {
-		q.sessionVars.SetAffectRows(result.AffectedRows)
-		q.sessionVars.SetLastInsertID(result.InsertId)
-		return nil, nil
-	}
-
-	return result, nil
-}
-
 func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
 	if !q.ns.IsDatabaseAllowed(db) {
 		return mysql.NewErrf(mysql.ErrDBaccessDenied, "db %s access denied", db)
