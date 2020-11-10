@@ -103,9 +103,10 @@ func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNod
 		return nil, err
 	}
 
+	q.sessionVars.SetAffectRows(result.AffectedRows)
+	q.sessionVars.SetLastInsertID(result.InsertId)
+
 	if result.Resultset == nil {
-		q.sessionVars.SetAffectRows(result.AffectedRows)
-		q.sessionVars.SetLastInsertID(result.InsertId)
 		return nil, nil
 	}
 
