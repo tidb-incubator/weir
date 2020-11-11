@@ -151,7 +151,10 @@ func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error)
 
 // TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) Close() error {
-	return q.connMgr.Close()
+	if q.connMgr != nil {
+		return q.connMgr.Close()
+	}
+	return nil
 }
 
 func (q *QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bool {
