@@ -19,9 +19,13 @@ log:
 registry:
   enable: false
 config_center:
-  type: "file"
-  config_file:
-    path: "./conf/namespace"
+  type: "etcd"
+  config_etcd:
+    addrs:
+    - "127.0.0.1:2379"
+    base_path: "/weir/defaultcluster"
+    username: ""
+    password: ""
     strict_parse: false
 performance:
   tcp_keep_alive: true
