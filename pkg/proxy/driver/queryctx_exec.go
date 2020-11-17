@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/pingcap/errors"
@@ -121,15 +122,66 @@ func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
 	return nil
 }
 
-// TODO(eastfisher): currently set variable only support AutoCommit
 func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error {
+	var autoCommitVar *ast.VariableAssignment
+	var sysVars []*ast.VariableAssignment
+
 	for _, v := range stmt.Variables {
 		switch strings.ToLower(v.Name) {
 		case variable.AutoCommit:
-			return q.setAutoCommit(ctx, v)
+			autoCommitVar = v
+		default:
+			if !isSessionSysVar(v) {
+				return errors.Errorf("%s is not a session system variable", v.Name)
+			}
+			sysVars = append(sysVars, v)
+		}
+	}
+
+	if len(sysVars) != 0 {
+		if err := q.setSysVars(ctx, sysVars); err != nil {
+			return err
+		}
+	}
+
+	if autoCommitVar != nil {
+		if err := q.setAutoCommit(ctx, autoCommitVar); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// set other system variables except autocommit
+func (q *QueryCtxImpl) setSysVars(ctx context.Context, vars []*ast.VariableAssignment) error {
+	for _, v := range vars {
+		if err := q.setSysVar(ctx, v); err != nil {
+			return errors.WithMessage(err, "set session system variable error")
 		}
 	}
 	return nil
+}
+
+func (q *QueryCtxImpl) setSysVar(ctx context.Context, v *ast.VariableAssignment) error {
+	if _, ok := v.Value.(*ast.DefaultExpr); ok {
+		q.sessionVars.SetSystemVarDefault(v.Name)
+	}
+
+	value, ok := v.Value.(ast.ValueExpr)
+	if !ok {
+		return errors.Errorf("%s value type is invalid: %T", v.Name, v)
+	}
+	valueStr := fmt.Sprintf("%v", value.GetValue())
+
+	if err := q.sessionVars.SetSystemVar(v.Name, valueStr); err != nil {
+		return err
+	}
+	return nil
+}
+
+func isSessionSysVar(v *ast.VariableAssignment) bool {
+	return !v.IsGlobal && v.IsSystem
 }
 
 func (q *QueryCtxImpl) setAutoCommit(ctx context.Context, v *ast.VariableAssignment) error {
