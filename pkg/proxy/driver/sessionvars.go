@@ -21,10 +21,10 @@ func (s *SessionVarsWrapper) SessionVars() *variable.SessionVars {
 	return s.sessionVars
 }
 
-func (s *SessionVarsWrapper) GetAllSystemVars() []*ast.VariableAssignment {
-	var ret []*ast.VariableAssignment
-	for _, v := range s.sessionVarMap {
-		ret = append(ret, v)
+func (s *SessionVarsWrapper) GetAllSystemVars() map[string]*ast.VariableAssignment {
+	ret := make(map[string]*ast.VariableAssignment, len(s.sessionVarMap))
+	for k, v := range s.sessionVarMap {
+		ret[k] = v
 	}
 	return ret
 }

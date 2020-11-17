@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
@@ -99,6 +100,8 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 }
 
 func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
+	ctx = context.WithValue(ctx, constant.ContextKeySessionVariable, q.sessionVars.GetAllSystemVars())
+
 	result, err := q.connMgr.Query(ctx, q.currentDB, sql)
 	if err != nil {
 		return nil, err
