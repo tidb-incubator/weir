@@ -128,6 +128,7 @@ func (cw *backendPooledConnWrapper) syncSessionVariables(ctx context.Context) er
 
 	_, err = cw.Execute(setSQL)
 	if err != nil {
+		logutil.BgLogger().Error("execute sysvar sql error", zap.Error(err), zap.String("sql", setSQL))
 		return errors.WithMessage(err, "set sysvar error")
 	}
 
@@ -145,7 +146,7 @@ func (cw *noErrorCloseConnWrapper) Close() {
 
 var noValueSysVars = map[string]*ast.VariableAssignment{}
 
-const RestoreSetVariableFlags = format.DefaultRestoreFlags | format.RestoreStringEscapeBackslash
+const RestoreSetVariableFlags = format.RestoreStringSingleQuotes | format.RestoreKeyWordUppercase
 
 func getSysVarsFromCtx(ctx context.Context) map[string]*ast.VariableAssignment {
 	v := ctx.Value(constant.ContextKeySessionVariable)

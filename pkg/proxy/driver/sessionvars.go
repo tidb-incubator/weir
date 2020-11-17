@@ -14,7 +14,10 @@ type SessionVarsWrapper struct {
 }
 
 func NewSessionVarsWrapper(sessionVars *variable.SessionVars) *SessionVarsWrapper {
-	return &SessionVarsWrapper{sessionVars: sessionVars}
+	return &SessionVarsWrapper{
+		sessionVars:   sessionVars,
+		sessionVarMap: make(map[string]*ast.VariableAssignment),
+	}
 }
 
 func (s *SessionVarsWrapper) SessionVars() *variable.SessionVars {
