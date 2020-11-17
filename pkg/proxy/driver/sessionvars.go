@@ -3,11 +3,12 @@ package driver
 import (
 	"sync/atomic"
 
+	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/tidb/sessionctx/variable"
 )
 
 type SessionVarsWrapper struct {
-	sessionVarSet map[string]struct{}
+	sessionVarMap map[string]*ast.VariableAssignment
 	sessionVars   *variable.SessionVars
 	affectedRows  uint64
 }
@@ -20,30 +21,27 @@ func (s *SessionVarsWrapper) SessionVars() *variable.SessionVars {
 	return s.sessionVars
 }
 
-func (s *SessionVarsWrapper) GetAllSystemVars() map[string]string {
-	ret := make(map[string]string)
-	for n := range s.sessionVarSet {
-		if v, ok := s.sessionVars.GetSystemVar(n); ok {
-			ret[n] = v
-		}
+func (s *SessionVarsWrapper) GetAllSystemVars() []*ast.VariableAssignment {
+	var ret []*ast.VariableAssignment
+	for _, v := range s.sessionVarMap {
+		ret = append(ret, v)
 	}
 	return ret
 }
 
-func (s *SessionVarsWrapper) GetSystemVar(name string) (string, bool) {
-	if _, ok := s.sessionVarSet[name]; !ok {
-		return "", false
+func (s *SessionVarsWrapper) SetSystemVarAST(name string, v *ast.VariableAssignment, val string) error {
+	// only for checking
+	if err := s.sessionVars.SetSystemVar(name, val); err != nil {
+		return err
 	}
-	return s.sessionVars.GetSystemVar(name)
-}
 
-func (s *SessionVarsWrapper) SetSystemVar(name string, val string) error {
-	s.sessionVarSet[name] = struct{}{}
-	return s.sessionVars.SetSystemVar(name, val)
+	s.sessionVarMap[name] = v
+	return nil
 }
 
 func (s *SessionVarsWrapper) SetSystemVarDefault(name string) {
-	delete(s.sessionVarSet, name)
+	// TODO(eastfisher): need to set sessionVars default?
+	delete(s.sessionVarMap, name)
 }
 
 func (s *SessionVarsWrapper) Status() uint16 {

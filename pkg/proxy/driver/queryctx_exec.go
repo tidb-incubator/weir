@@ -174,7 +174,7 @@ func (q *QueryCtxImpl) setSysVar(ctx context.Context, v *ast.VariableAssignment)
 	}
 	valueStr := fmt.Sprintf("%v", value.GetValue())
 
-	if err := q.sessionVars.SetSystemVar(v.Name, valueStr); err != nil {
+	if err := q.sessionVars.SetSystemVarAST(v.Name, v, valueStr); err != nil {
 		return err
 	}
 	return nil
