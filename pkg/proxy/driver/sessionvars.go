@@ -1,30 +1,55 @@
 package driver
 
 import (
+	"fmt"
 	"sync/atomic"
 
+	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/tidb/sessionctx/variable"
 )
 
 type SessionVarsWrapper struct {
-	sessionVars  *variable.SessionVars
-	affectedRows uint64
+	sessionVarMap map[string]*ast.VariableAssignment
+	sessionVars   *variable.SessionVars
+	affectedRows  uint64
 }
 
 func NewSessionVarsWrapper(sessionVars *variable.SessionVars) *SessionVarsWrapper {
-	return &SessionVarsWrapper{sessionVars: sessionVars}
+	return &SessionVarsWrapper{
+		sessionVars:   sessionVars,
+		sessionVarMap: make(map[string]*ast.VariableAssignment),
+	}
 }
 
 func (s *SessionVarsWrapper) SessionVars() *variable.SessionVars {
 	return s.sessionVars
 }
 
-func (s *SessionVarsWrapper) GetSystemVar(name string) (string, bool) {
-	return s.sessionVars.GetSystemVar(name)
+func (s *SessionVarsWrapper) GetAllSystemVars() map[string]*ast.VariableAssignment {
+	ret := make(map[string]*ast.VariableAssignment, len(s.sessionVarMap))
+	for k, v := range s.sessionVarMap {
+		ret[k] = v
+	}
+	return ret
 }
 
-func (s *SessionVarsWrapper) SetSystemVar(name string, val string) error {
-	return s.sessionVars.SetSystemVar(name, val)
+func (s *SessionVarsWrapper) SetSystemVarAST(name string, v *ast.VariableAssignment) {
+	s.sessionVarMap[name] = v
+}
+
+func (s *SessionVarsWrapper) CheckSessionSysVarValid(name string) error {
+	sysVar := variable.GetSysVar(name)
+	if sysVar == nil {
+		return fmt.Errorf("%s is not a valid sysvar", name)
+	}
+	if (sysVar.Scope & variable.ScopeSession) == 0 {
+		return fmt.Errorf("%s is not a session scope sysvar", name)
+	}
+	return nil
+}
+
+func (s *SessionVarsWrapper) SetSystemVarDefault(name string) {
+	delete(s.sessionVarMap, name)
 }
 
 func (s *SessionVarsWrapper) Status() uint16 {
@@ -39,6 +64,7 @@ func (s *SessionVarsWrapper) SetStatusFlag(flag uint16, on bool) {
 	s.sessionVars.SetStatusFlag(flag, on)
 }
 
+// TODO(eastfisher): remove this function
 func (s *SessionVarsWrapper) GetCharsetInfo() (charset, collation string) {
 	return s.sessionVars.GetCharsetInfo()
 }

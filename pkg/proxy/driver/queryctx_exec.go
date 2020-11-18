@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
@@ -98,6 +99,8 @@ func createShowDatabasesResult(dbNames []string) (*gomysql.Result, error) {
 }
 
 func (q *QueryCtxImpl) executeInBackend(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
+	ctx = context.WithValue(ctx, constant.ContextKeySessionVariable, q.sessionVars.GetAllSystemVars())
+
 	result, err := q.connMgr.Query(ctx, q.currentDB, sql)
 	if err != nil {
 		return nil, err
@@ -121,14 +124,53 @@ func (q *QueryCtxImpl) useDB(ctx context.Context, db string) error {
 	return nil
 }
 
-// TODO(eastfisher): currently set variable only support AutoCommit
 func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error {
+	var autoCommitVar *ast.VariableAssignment
+	var sysVars []*ast.VariableAssignment
+
 	for _, v := range stmt.Variables {
 		switch strings.ToLower(v.Name) {
 		case variable.AutoCommit:
-			return q.setAutoCommit(ctx, v)
+			autoCommitVar = v
+		default:
+			if v.IsGlobal {
+				return errors.Errorf("cannot set variable in global scope")
+			}
+			sysVars = append(sysVars, v)
 		}
 	}
+
+	if len(sysVars) != 0 {
+		if err := q.setSysVars(ctx, sysVars); err != nil {
+			return err
+		}
+	}
+
+	if autoCommitVar != nil {
+		if err := q.setAutoCommit(ctx, autoCommitVar); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// set other system variables except autocommit
+func (q *QueryCtxImpl) setSysVars(ctx context.Context, vars []*ast.VariableAssignment) error {
+	for _, v := range vars {
+		if err := q.sessionVars.CheckSessionSysVarValid(v.Name); err != nil {
+			return errors.WithMessage(err, "check sysvar error")
+		}
+	}
+
+	for _, v := range vars {
+		if _, ok := v.Value.(*ast.DefaultExpr); ok {
+			q.sessionVars.SetSystemVarDefault(v.Name)
+		} else {
+			q.sessionVars.SetSystemVarAST(v.Name, v)
+		}
+	}
+
 	return nil
 }
 
