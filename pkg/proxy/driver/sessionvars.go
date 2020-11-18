@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"fmt"
 	"sync/atomic"
 
 	"github.com/pingcap/parser/ast"
@@ -32,18 +33,22 @@ func (s *SessionVarsWrapper) GetAllSystemVars() map[string]*ast.VariableAssignme
 	return ret
 }
 
-func (s *SessionVarsWrapper) SetSystemVarAST(name string, v *ast.VariableAssignment, val string) error {
-	// only for checking
-	if err := s.sessionVars.SetSystemVar(name, val); err != nil {
-		return err
-	}
-
+func (s *SessionVarsWrapper) SetSystemVarAST(name string, v *ast.VariableAssignment) {
 	s.sessionVarMap[name] = v
+}
+
+func (s *SessionVarsWrapper) CheckSessionSysVarValid(name string) error {
+	sysVar := variable.GetSysVar(name)
+	if sysVar == nil {
+		return fmt.Errorf("%s is not a valid sysvar", name)
+	}
+	if (sysVar.Scope & variable.ScopeSession) == 0 {
+		return fmt.Errorf("%s is not a session scope sysvar", name)
+	}
 	return nil
 }
 
 func (s *SessionVarsWrapper) SetSystemVarDefault(name string) {
-	// TODO(eastfisher): need to set sessionVars default?
 	delete(s.sessionVarMap, name)
 }
 

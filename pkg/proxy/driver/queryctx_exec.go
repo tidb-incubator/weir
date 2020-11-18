@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
@@ -134,8 +133,8 @@ func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error
 		case variable.AutoCommit:
 			autoCommitVar = v
 		default:
-			if !isSessionSysVar(v) {
-				return errors.Errorf("%s is not a session system variable", v.Name)
+			if v.IsGlobal {
+				return errors.Errorf("cannot set variable in global scope")
 			}
 			sysVars = append(sysVars, v)
 		}
@@ -159,32 +158,20 @@ func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error
 // set other system variables except autocommit
 func (q *QueryCtxImpl) setSysVars(ctx context.Context, vars []*ast.VariableAssignment) error {
 	for _, v := range vars {
-		if err := q.setSysVar(ctx, v); err != nil {
-			return errors.WithMessage(err, "set session system variable error")
+		if err := q.sessionVars.CheckSessionSysVarValid(v.Name); err != nil {
+			return errors.WithMessage(err, "check sysvar error")
 		}
 	}
+
+	for _, v := range vars {
+		if _, ok := v.Value.(*ast.DefaultExpr); ok {
+			q.sessionVars.SetSystemVarDefault(v.Name)
+		} else {
+			q.sessionVars.SetSystemVarAST(v.Name, v)
+		}
+	}
+
 	return nil
-}
-
-func (q *QueryCtxImpl) setSysVar(ctx context.Context, v *ast.VariableAssignment) error {
-	if _, ok := v.Value.(*ast.DefaultExpr); ok {
-		q.sessionVars.SetSystemVarDefault(v.Name)
-	}
-
-	value, ok := v.Value.(ast.ValueExpr)
-	if !ok {
-		return errors.Errorf("%s value type is invalid: %T", v.Name, v)
-	}
-	valueStr := fmt.Sprintf("%v", value.GetValue())
-
-	if err := q.sessionVars.SetSystemVarAST(v.Name, v, valueStr); err != nil {
-		return err
-	}
-	return nil
-}
-
-func isSessionSysVar(v *ast.VariableAssignment) bool {
-	return !v.IsGlobal && v.IsSystem
 }
 
 func (q *QueryCtxImpl) setAutoCommit(ctx context.Context, v *ast.VariableAssignment) error {
