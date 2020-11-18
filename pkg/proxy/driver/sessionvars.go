@@ -64,6 +64,7 @@ func (s *SessionVarsWrapper) SetStatusFlag(flag uint16, on bool) {
 	s.sessionVars.SetStatusFlag(flag, on)
 }
 
+// TODO(eastfisher): remove this function
 func (s *SessionVarsWrapper) GetCharsetInfo() (charset, collation string) {
 	return s.sessionVars.GetCharsetInfo()
 }
