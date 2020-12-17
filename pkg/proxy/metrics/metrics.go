@@ -10,6 +10,7 @@ const (
 const (
 	LabelServer    = "server"
 	LabelQueryCtx  = "queryctx"
+	LabelBackend   = "backend"
 	LabelSession   = "session"
 	LabelDomain    = "domain"
 	LabelDDLOwner  = "ddl-owner"
@@ -56,4 +57,9 @@ func RegisterProxyMetrics() {
 	prometheus.MustRegister(QueryCtxGauge)
 	prometheus.MustRegister(QueryCtxAttachedConnGauge)
 	prometheus.MustRegister(QueryCtxTransactionDuration)
+
+	// backend metrics
+	prometheus.MustRegister(BackendEventCounter)
+	prometheus.MustRegister(BackendQueryCounter)
+	prometheus.MustRegister(BackendConnInUseGauge)
 }

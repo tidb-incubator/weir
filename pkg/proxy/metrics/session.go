@@ -23,4 +23,6 @@ const (
 	LblBatchGet    = "batch_get"
 	LblGet         = "get"
 	LblNamespace   = "namespace"
+
+	LblBackendInstance = "instance"
 )

@@ -9,6 +9,7 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
 	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
+	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
 	"github.com/pingcap-incubator/weir/pkg/util/pool"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
@@ -30,12 +31,14 @@ type Config struct {
 }
 
 type ConnPool struct {
+	ns   string
 	cfg  *ConnPoolConfig
 	pool *pool.ResourcePool
 }
 
 type backendPooledConnWrapper struct {
 	*client.Conn
+	ns       string
 	addr     string
 	username string
 	pool     *pool.ResourcePool
@@ -47,15 +50,17 @@ type noErrorCloseConnWrapper struct {
 	*backendPooledConnWrapper
 }
 
-func NewConnPool(cfg *ConnPoolConfig) *ConnPool {
+func NewConnPool(ns string, cfg *ConnPoolConfig) *ConnPool {
 	return &ConnPool{
+		ns:  ns,
 		cfg: cfg,
 	}
 }
 
-func newConnWrapper(pool *pool.ResourcePool, conn *client.Conn, addr, username string) *backendPooledConnWrapper {
+func newConnWrapper(pool *pool.ResourcePool, conn *client.Conn, ns, addr, username string) *backendPooledConnWrapper {
 	return &backendPooledConnWrapper{
 		Conn:     conn,
+		ns:       ns,
 		addr:     addr,
 		username: username,
 		pool:     pool,
@@ -70,7 +75,7 @@ func (c *ConnPool) Init() error {
 		if err != nil {
 			return nil, err
 		}
-		return &noErrorCloseConnWrapper{newConnWrapper(c.pool, conn, c.cfg.Addr, c.cfg.UserName)}, nil
+		return &noErrorCloseConnWrapper{newConnWrapper(c.pool, conn, c.ns, c.cfg.Addr, c.cfg.UserName)}, nil
 	}
 
 	c.pool = pool.NewResourcePool(connFactory, c.cfg.Capacity, c.cfg.Capacity, c.cfg.IdleTimeout, 0, nil)
@@ -82,6 +87,8 @@ func (c *ConnPool) GetConn(ctx context.Context) (driver.PooledBackendConn, error
 	if err != nil {
 		return nil, err
 	}
+
+	recordCurrentBackendMetrics(c.ns, c.cfg.Addr, c.pool)
 
 	conn := rs.(*noErrorCloseConnWrapper).backendPooledConnWrapper
 	if err := conn.syncSessionVariables(ctx); err != nil {
@@ -96,13 +103,19 @@ func (c *ConnPool) Close() error {
 	return nil
 }
 
+func recordCurrentBackendMetrics(ns, addr string, resourcePool *pool.ResourcePool) {
+	metrics.BackendConnInUseGauge.WithLabelValues(ns, addr).Set(float64(resourcePool.InUse()))
+}
+
 func (cw *backendPooledConnWrapper) PutBack() {
 	w := &noErrorCloseConnWrapper{cw}
 	cw.pool.Put(w)
+	recordCurrentBackendMetrics(cw.ns, cw.addr, cw.pool)
 }
 
 func (cw *backendPooledConnWrapper) ErrorClose() error {
 	cw.pool.Put(nil)
+	recordCurrentBackendMetrics(cw.ns, cw.addr, cw.pool)
 	if err := cw.Conn.Close(); err != nil {
 		return errors.WithMessage(err, fmt.Sprintf("close backend conn error, addr: %s, username: %s", cw.addr, cw.username))
 	}
