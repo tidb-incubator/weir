@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
 	"github.com/pingcap/errors"
@@ -20,10 +21,15 @@ func (q *QueryCtxImpl) execute(ctx context.Context, sql string) (*gomysql.Result
 	}
 
 	if q.isStmtDenied(ctx, sql, stmt) {
+		q.recordDeniedQueryMetrics(stmt)
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
 	}
 
-	return q.executeStmt(ctx, sql, stmt)
+	startTime := time.Now()
+	ret, err := q.executeStmt(ctx, sql, stmt)
+	durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
+	q.recordQueryMetrics(stmt, err, durationMilliSecond)
+	return ret, err
 }
 
 // TODO(eastfisher): implement this function
