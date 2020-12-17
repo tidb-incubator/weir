@@ -2,19 +2,14 @@ package metrics
 
 import "github.com/prometheus/client_golang/prometheus"
 
-var (
-	// PanicCounter measures the count of panics.
-	PanicCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "weirproxy",
-			Subsystem: "server",
-			Name:      "panic_total",
-			Help:      "Counter of panic.",
-		}, []string{LblType})
+const (
+	ModuleWeirProxy = "weirproxy"
 )
 
 // metrics labels.
 const (
+	LabelServer = "server"
+	LabelQueryCtx = "queryctx"
 	LabelSession   = "session"
 	LabelDomain    = "domain"
 	LabelDDLOwner  = "ddl-owner"
