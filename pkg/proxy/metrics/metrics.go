@@ -54,4 +54,3 @@ func RegisterProxyMetrics() {
 	prometheus.MustRegister(GetTokenDurationHistogram)
 	prometheus.MustRegister(HandShakeErrorCounter)
 }
-
