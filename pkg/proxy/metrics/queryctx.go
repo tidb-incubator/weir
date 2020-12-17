@@ -72,15 +72,7 @@ var (
 			Subsystem: LabelQueryCtx,
 			Name:      "queryctx",
 			Help:      "Number of queryctx (equals to client connection).",
-		}, []string{LblNamespace, LblDb})
-
-	QueryCtxErrCloseCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: ModuleWeirProxy,
-			Subsystem: LabelQueryCtx,
-			Name:      "queryctx_err_close",
-			Help:      "Counter of queryctx error close.",
-		}, []string{LblNamespace, LblDb})
+		}, []string{LblNamespace})
 
 	QueryCtxAttachedConnGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

@@ -15,6 +15,8 @@ type Namespace interface {
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
 	GetPooledConn(context.Context) (PooledBackendConn, error)
+	IncrConnCount()
+	DescConnCount()
 }
 
 type PooledBackendConn interface {

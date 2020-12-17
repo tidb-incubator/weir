@@ -8,8 +8,8 @@ const (
 
 // metrics labels.
 const (
-	LabelServer = "server"
-	LabelQueryCtx = "queryctx"
+	LabelServer    = "server"
+	LabelQueryCtx  = "queryctx"
 	LabelSession   = "session"
 	LabelDomain    = "domain"
 	LabelDDLOwner  = "ddl-owner"
@@ -48,4 +48,12 @@ func RegisterProxyMetrics() {
 	prometheus.MustRegister(ServerEventCounter)
 	prometheus.MustRegister(GetTokenDurationHistogram)
 	prometheus.MustRegister(HandShakeErrorCounter)
+
+	// query ctx metrics
+	prometheus.MustRegister(QueryCtxQueryCounter)
+	prometheus.MustRegister(QueryCtxQueryDeniedCounter)
+	prometheus.MustRegister(QueryCtxQueryDurationHistogram)
+	prometheus.MustRegister(QueryCtxGauge)
+	prometheus.MustRegister(QueryCtxAttachedConnGauge)
+	prometheus.MustRegister(QueryCtxTransactionDuration)
 }
