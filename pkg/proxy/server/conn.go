@@ -32,6 +32,7 @@ import (
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util/arena"
 	"github.com/pingcap/tidb/util/logutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -40,6 +41,39 @@ const (
 	connStatusReading
 	connStatusShutdown     // Closed by server.
 	connStatusWaitShutdown // Notified by server to close.
+)
+
+var (
+	queryTotalCountOk = [...]prometheus.Counter{
+		mysql.ComSleep:            metrics.QueryTotalCounter.WithLabelValues("Sleep", "OK"),
+		mysql.ComQuit:             metrics.QueryTotalCounter.WithLabelValues("Quit", "OK"),
+		mysql.ComInitDB:           metrics.QueryTotalCounter.WithLabelValues("InitDB", "OK"),
+		mysql.ComQuery:            metrics.QueryTotalCounter.WithLabelValues("Query", "OK"),
+		mysql.ComPing:             metrics.QueryTotalCounter.WithLabelValues("Ping", "OK"),
+		mysql.ComFieldList:        metrics.QueryTotalCounter.WithLabelValues("FieldList", "OK"),
+		mysql.ComStmtPrepare:      metrics.QueryTotalCounter.WithLabelValues("StmtPrepare", "OK"),
+		mysql.ComStmtExecute:      metrics.QueryTotalCounter.WithLabelValues("StmtExecute", "OK"),
+		mysql.ComStmtFetch:        metrics.QueryTotalCounter.WithLabelValues("StmtFetch", "OK"),
+		mysql.ComStmtClose:        metrics.QueryTotalCounter.WithLabelValues("StmtClose", "OK"),
+		mysql.ComStmtSendLongData: metrics.QueryTotalCounter.WithLabelValues("StmtSendLongData", "OK"),
+		mysql.ComStmtReset:        metrics.QueryTotalCounter.WithLabelValues("StmtReset", "OK"),
+		mysql.ComSetOption:        metrics.QueryTotalCounter.WithLabelValues("SetOption", "OK"),
+	}
+	queryTotalCountErr = [...]prometheus.Counter{
+		mysql.ComSleep:            metrics.QueryTotalCounter.WithLabelValues("Sleep", "Error"),
+		mysql.ComQuit:             metrics.QueryTotalCounter.WithLabelValues("Quit", "Error"),
+		mysql.ComInitDB:           metrics.QueryTotalCounter.WithLabelValues("InitDB", "Error"),
+		mysql.ComQuery:            metrics.QueryTotalCounter.WithLabelValues("Query", "Error"),
+		mysql.ComPing:             metrics.QueryTotalCounter.WithLabelValues("Ping", "Error"),
+		mysql.ComFieldList:        metrics.QueryTotalCounter.WithLabelValues("FieldList", "Error"),
+		mysql.ComStmtPrepare:      metrics.QueryTotalCounter.WithLabelValues("StmtPrepare", "Error"),
+		mysql.ComStmtExecute:      metrics.QueryTotalCounter.WithLabelValues("StmtExecute", "Error"),
+		mysql.ComStmtFetch:        metrics.QueryTotalCounter.WithLabelValues("StmtFetch", "Error"),
+		mysql.ComStmtClose:        metrics.QueryTotalCounter.WithLabelValues("StmtClose", "Error"),
+		mysql.ComStmtSendLongData: metrics.QueryTotalCounter.WithLabelValues("StmtSendLongData", "Error"),
+		mysql.ComStmtReset:        metrics.QueryTotalCounter.WithLabelValues("StmtReset", "Error"),
+		mysql.ComSetOption:        metrics.QueryTotalCounter.WithLabelValues("SetOption", "Error"),
+	}
 )
 
 // clientConn represents a connection between server and client, it maintains connection specific state,
@@ -260,5 +294,20 @@ func (cc *clientConn) String() string {
 
 // TODO(eastfisher): implement this function
 func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
-	return
+	var counter prometheus.Counter
+	if err != nil && int(cmd) < len(queryTotalCountErr) {
+		counter = queryTotalCountErr[cmd]
+	} else if err == nil && int(cmd) < len(queryTotalCountOk) {
+		counter = queryTotalCountOk[cmd]
+	}
+	if counter != nil {
+		counter.Inc()
+	} else {
+		label := strconv.Itoa(int(cmd))
+		if err != nil {
+			metrics.QueryTotalCounter.WithLabelValues(label, "ERROR").Inc()
+		} else {
+			metrics.QueryTotalCounter.WithLabelValues(label, "OK").Inc()
+		}
+	}
 }
