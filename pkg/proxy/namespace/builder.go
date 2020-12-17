@@ -16,7 +16,7 @@ type NamespaceImpl struct {
 }
 
 func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
-	be, err := BuildBackend(&cfg.Backend)
+	be, err := BuildBackend(cfg.Namespace, &cfg.Backend)
 	if err != nil {
 		return nil, errors.WithMessage(err, "build backend error")
 	}
@@ -37,13 +37,13 @@ func (n *NamespaceImpl) Name() string {
 	return n.name
 }
 
-func BuildBackend(cfg *config.BackendNamespace) (Backend, error) {
+func BuildBackend(ns string, cfg *config.BackendNamespace) (Backend, error) {
 	bcfg, err := parseBackendConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	b := backend.NewBackendImpl(bcfg)
+	b := backend.NewBackendImpl(ns, bcfg)
 	if err := b.Init(); err != nil {
 		return nil, err
 	}

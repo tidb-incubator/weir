@@ -154,6 +154,7 @@ func (q *QueryCtxImpl) Close() error {
 	if q.connMgr != nil {
 		return q.connMgr.Close()
 	}
+	q.ns.DescConnCount()
 	return nil
 }
 
@@ -164,6 +165,7 @@ func (q *QueryCtxImpl) Auth(user *auth.UserIdentity, pwd []byte, salt []byte) bo
 	}
 	q.ns = ns
 	q.initAttachedConnHolder()
+	q.ns.IncrConnCount()
 	return true
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
+	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
 	"github.com/pingcap-incubator/weir/pkg/util/sync2"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
@@ -29,6 +30,7 @@ type BackendConfig struct {
 }
 
 type BackendImpl struct {
+	ns        string
 	cfg       *BackendConfig
 	connPools map[string]*ConnPool // key: addr
 	instances []*Instance
@@ -38,7 +40,7 @@ type BackendImpl struct {
 	closed sync2.AtomicBool
 }
 
-func NewBackendImpl(cfg *BackendConfig) *BackendImpl {
+func NewBackendImpl(ns string, cfg *BackendConfig) *BackendImpl {
 	return &BackendImpl{
 		cfg:    cfg,
 		closed: sync2.NewAtomicBool(false),
@@ -48,6 +50,7 @@ func NewBackendImpl(cfg *BackendConfig) *BackendImpl {
 func (b *BackendImpl) Init() error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
+	metrics.BackendEventCounter.WithLabelValues(b.ns, metrics.BackendEventIniting).Inc()
 
 	if err := b.initSelector(); err != nil {
 		return err
@@ -58,6 +61,8 @@ func (b *BackendImpl) Init() error {
 	if err := b.initConnPools(); err != nil {
 		return err
 	}
+
+	metrics.BackendEventCounter.WithLabelValues(b.ns, metrics.BackendEventInited).Inc()
 	return nil
 }
 
@@ -87,7 +92,7 @@ func (b *BackendImpl) initConnPools() error {
 			Capacity:    b.cfg.Capacity,
 			IdleTimeout: b.cfg.IdleTimeout,
 		}
-		connPool := NewConnPool(poolCfg)
+		connPool := NewConnPool(b.ns, poolCfg)
 		connPools[addr] = connPool
 	}
 
@@ -149,6 +154,7 @@ func (b *BackendImpl) GetPooledConn(ctx context.Context) (driver.PooledBackendCo
 }
 
 func (b *BackendImpl) Close() {
+	metrics.BackendEventCounter.WithLabelValues(b.ns, metrics.BackendEventClosing).Inc()
 	if !b.closed.CompareAndSwap(false, true) {
 		return
 	}
@@ -161,6 +167,8 @@ func (b *BackendImpl) Close() {
 			logutil.BgLogger().Error("close conn pool error, addr: %s, err: %v", zap.String("addr", addr), zap.Error(err))
 		}
 	}
+
+	metrics.BackendEventCounter.WithLabelValues(b.ns, metrics.BackendEventClosed).Inc()
 }
 
 func (b *BackendImpl) route(instances []*Instance) (*Instance, error) {

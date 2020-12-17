@@ -2,19 +2,15 @@ package metrics
 
 import "github.com/prometheus/client_golang/prometheus"
 
-var (
-	// PanicCounter measures the count of panics.
-	PanicCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "weirproxy",
-			Subsystem: "server",
-			Name:      "panic_total",
-			Help:      "Counter of panic.",
-		}, []string{LblType})
+const (
+	ModuleWeirProxy = "weirproxy"
 )
 
 // metrics labels.
 const (
+	LabelServer    = "server"
+	LabelQueryCtx  = "queryctx"
+	LabelBackend   = "backend"
 	LabelSession   = "session"
 	LabelDomain    = "domain"
 	LabelDDLOwner  = "ddl-owner"
@@ -53,4 +49,17 @@ func RegisterProxyMetrics() {
 	prometheus.MustRegister(ServerEventCounter)
 	prometheus.MustRegister(GetTokenDurationHistogram)
 	prometheus.MustRegister(HandShakeErrorCounter)
+
+	// query ctx metrics
+	prometheus.MustRegister(QueryCtxQueryCounter)
+	prometheus.MustRegister(QueryCtxQueryDeniedCounter)
+	prometheus.MustRegister(QueryCtxQueryDurationHistogram)
+	prometheus.MustRegister(QueryCtxGauge)
+	prometheus.MustRegister(QueryCtxAttachedConnGauge)
+	prometheus.MustRegister(QueryCtxTransactionDuration)
+
+	// backend metrics
+	prometheus.MustRegister(BackendEventCounter)
+	prometheus.MustRegister(BackendQueryCounter)
+	prometheus.MustRegister(BackendConnInUseGauge)
 }

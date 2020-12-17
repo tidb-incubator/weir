@@ -3,9 +3,11 @@ package namespace
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
+	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
 	"github.com/pingcap/errors"
 )
 
@@ -14,8 +16,9 @@ type NamespaceHolder struct {
 }
 
 type NamespaceWrapper struct {
-	nsmgr *NamespaceManager
-	name  string
+	nsmgr       *NamespaceManager
+	name        string
+	connCounter int64
 }
 
 func CreateNamespaceHolder(cfgs []*config.Namespace, build NamespaceBuilder) (*NamespaceHolder, error) {
@@ -74,6 +77,16 @@ func (n *NamespaceWrapper) GetPooledConn(ctx context.Context) (driver.PooledBack
 	return n.mustGetCurrentNamespace().GetPooledConn(ctx)
 }
 
+func (n *NamespaceWrapper) IncrConnCount() {
+	currCnt := atomic.AddInt64(&n.connCounter, 1)
+	metrics.QueryCtxGauge.WithLabelValues(n.name).Set(float64(currCnt))
+}
+
+func (n *NamespaceWrapper) DescConnCount() {
+	currCnt := atomic.AddInt64(&n.connCounter, -1)
+	metrics.QueryCtxGauge.WithLabelValues(n.name).Set(float64(currCnt))
+}
+
 func (n *NamespaceWrapper) Closed() bool {
 	_, ok := n.nsmgr.getCurrentNamespaces().Get(n.name)
 	return !ok
@@ -86,4 +99,3 @@ func (n *NamespaceWrapper) mustGetCurrentNamespace() Namespace {
 	}
 	return ns
 }
-

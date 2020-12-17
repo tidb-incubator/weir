@@ -19,7 +19,7 @@ func TestConnPool_ErrorClose_Success(t *testing.T) {
 		Capacity:1, // pool size is set to 1
 		IdleTimeout:0,
 	}
-	pool := backend.NewConnPool(&cfg)
+	pool := backend.NewConnPool("test", &cfg)
 	err := pool.Init()
 	require.NoError(t, err)
 
