@@ -3,6 +3,7 @@ package proxy
 import (
 	"net"
 	"net/http"
+	"net/http/pprof"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pingcap-incubator/weir/pkg/config"
@@ -10,6 +11,7 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/proxy/namespace"
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 	"github.com/pingcap/tidb/util/logutil"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -69,6 +71,16 @@ func CreateHttpApiServer(proxyServer *server.Server, nsmgr *namespace.NamespaceM
 	apiServer.wrapBasicAuthGinMiddleware(namespaceRouteGroup)
 	namespaceHttpHandler := NewNamespaceHttpHandler(apiServer.nsmgr, apiServer.cfgCenter)
 	namespaceHttpHandler.AddHandlersToRouteGroup(namespaceRouteGroup)
+
+	metricsRouteGroup := engine.Group("/metrics")
+	metricsRouteGroup.GET("/", gin.WrapF(promhttp.Handler().ServeHTTP))
+
+	pprofRouteGroup := engine.Group("/debug/pprof")
+	pprofRouteGroup.GET("/", gin.WrapF(pprof.Index))
+	pprofRouteGroup.GET("/cmdline", gin.WrapF(pprof.Cmdline))
+	pprofRouteGroup.GET("/profile", gin.WrapF(pprof.Profile))
+	pprofRouteGroup.GET("/symbol", gin.WrapF(pprof.Symbol))
+	pprofRouteGroup.GET("/trace", gin.WrapF(pprof.Trace))
 
 	apiServer.engine = engine
 	return apiServer, nil
