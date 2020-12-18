@@ -38,6 +38,9 @@ func (s *SessionVarsWrapper) SetSystemVarAST(name string, v *ast.VariableAssignm
 }
 
 func (s *SessionVarsWrapper) CheckSessionSysVarValid(name string) error {
+	if name == ast.SetNames || name == ast.SetCharset {
+		return nil
+	}
 	sysVar := variable.GetSysVar(name)
 	if sysVar == nil {
 		return fmt.Errorf("%s is not a valid sysvar", name)

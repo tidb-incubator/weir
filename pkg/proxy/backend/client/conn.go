@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
 	"github.com/pingcap/errors"
 	. "github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/packet"
@@ -65,8 +66,8 @@ func Connect(addr string, user string, password string, dbName string, options .
 	c.db = dbName
 	c.proto = proto
 
-	//use default charset here, utf-8
-	c.charset = DEFAULT_CHARSET
+	//use default charset here
+	c.charset = constant.DefaultCharset
 
 	// Apply configuration functions.
 	for i := range options {
