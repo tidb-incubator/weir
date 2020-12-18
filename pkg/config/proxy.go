@@ -13,7 +13,6 @@ type Proxy struct {
 type ProxyServer struct {
 	Addr           string `yaml:"addr"`
 	MaxConnections uint32 `yaml:"max_connections"`
-	TokenLimit     uint   `yaml:"token_limit"`
 }
 
 type AdminServer struct {
