@@ -51,14 +51,12 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 			pprof.SetGoroutineLabels(ctx)
 		}
 	}
-	token := cc.server.getToken()
 	defer func() {
 		// if handleChangeUser failed, cc.ctx may be nil
 		if cc.ctx != nil {
 			cc.ctx.SetProcessInfo("", t, mysql.ComSleep, 0)
 		}
 
-		cc.server.releaseToken(token)
 		span.Finish()
 	}()
 

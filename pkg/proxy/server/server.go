@@ -57,7 +57,6 @@ type Server struct {
 	driver            IDriver
 	listener          net.Listener
 	rwlock            sync.RWMutex
-	concurrentLimiter *TokenLimiter
 	clients           map[uint32]*clientConn
 	baseConnID        uint32
 	capability        uint32
@@ -68,7 +67,6 @@ func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 	s := &Server{
 		cfg:               cfg,
 		driver:            driver,
-		concurrentLimiter: NewTokenLimiter(cfg.ProxyServer.TokenLimit),
 		clients:           make(map[uint32]*clientConn),
 	}
 
@@ -138,18 +136,6 @@ func (s *Server) ConnectionCount() int {
 	cnt := len(s.clients)
 	s.rwlock.RUnlock()
 	return cnt
-}
-
-func (s *Server) getToken() *Token {
-	start := time.Now()
-	tok := s.concurrentLimiter.Get()
-	// Note that data smaller than one microsecond is ignored, because that case can be viewed as non-block.
-	metrics.GetTokenDurationHistogram.Observe(float64(time.Since(start).Nanoseconds() / 1e3))
-	return tok
-}
-
-func (s *Server) releaseToken(token *Token) {
-	s.concurrentLimiter.Put(token)
 }
 
 func (s *Server) onConn(conn *clientConn) {
