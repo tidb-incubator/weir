@@ -24,5 +24,5 @@ const (
 	LblGet         = "get"
 	LblNamespace   = "namespace"
 
-	LblBackendInstance = "instance"
+	LblBackendAddr = "backend_addr"
 )

@@ -24,7 +24,7 @@ var (
 			Subsystem: LabelBackend,
 			Name:      "b_conn_cnt",
 			Help:      "Counter of backend query count.",
-		}, []string{LblNamespace, LblBackendInstance})
+		}, []string{LblNamespace, LblBackendAddr})
 
 	BackendConnInUseGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -32,5 +32,5 @@ var (
 			Subsystem: LabelBackend,
 			Name:      "b_conn_in_use",
 			Help:      "Number of backend conn in use.",
-		}, []string{LblNamespace, LblBackendInstance})
+		}, []string{LblNamespace, LblBackendAddr})
 )
