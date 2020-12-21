@@ -200,7 +200,10 @@ func getRestoreSQLFromStmt(stmt *ast.SetStmt) (string, error) {
 // get variables to set and variables to set default
 func getDiffVariableList(frontend, current map[string]*ast.VariableAssignment) ([]*ast.VariableAssignment, []*ast.VariableAssignment) {
 	var toSet, toRemove []*ast.VariableAssignment
-	for _, v := range frontend {
+	for k, v := range frontend {
+		if currentValue, ok := current[k]; ok && isAstEquals(currentValue, v) {
+			continue
+		}
 		toSet = append(toSet, v)
 	}
 	for k, v := range current {
@@ -209,4 +212,15 @@ func getDiffVariableList(frontend, current map[string]*ast.VariableAssignment) (
 		}
 	}
 	return toSet, toRemove
+}
+
+func isAstEquals(a, b ast.Node) bool {
+	sba := strings.Builder{}
+	ctx1 := format.NewRestoreCtx(RestoreSetVariableFlags, &sba)
+	a.Restore(ctx1)
+
+	sbb := strings.Builder{}
+	ctx2 := format.NewRestoreCtx(RestoreSetVariableFlags, &sbb)
+	b.Restore(ctx2)
+	return sba.String() == sbb.String()
 }
