@@ -133,6 +133,9 @@ func (cw *backendPooledConnWrapper) syncSessionVariables(ctx context.Context) er
 		return nil
 	}
 
+	// TODO: remove this function
+	logutil.BgLogger().Debug("backend conn sysvar ast list (TODO remove)", zap.Reflect("varsToSet", varsToSet), zap.Reflect("varsToRemove", varsToRemove))
+
 	setSQL, err := getSetSysVarsSQL(varsToSet, varsToRemove)
 	logutil.BgLogger().Debug("backend conn set sysvar sql", zap.String("sql", setSQL), zap.Error(err))
 	if err != nil {
