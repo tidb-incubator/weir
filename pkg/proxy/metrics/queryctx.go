@@ -80,7 +80,7 @@ var (
 			Subsystem: LabelQueryCtx,
 			Name:      "attached_connections",
 			Help:      "Number of attached backend connections.",
-		}, []string{LblNamespace, LblDb})
+		}, []string{LblNamespace})
 
 	QueryCtxTransactionDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
