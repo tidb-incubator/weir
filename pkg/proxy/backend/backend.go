@@ -44,6 +44,7 @@ func NewBackendImpl(ns string, cfg *BackendConfig) *BackendImpl {
 	return &BackendImpl{
 		cfg:    cfg,
 		closed: sync2.NewAtomicBool(false),
+		ns:     ns,
 	}
 }
 
