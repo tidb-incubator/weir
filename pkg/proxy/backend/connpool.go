@@ -159,7 +159,7 @@ func (cw *noErrorCloseConnWrapper) Close() {
 
 var noValueSysVars = map[string]*ast.VariableAssignment{}
 
-const RestoreSetVariableFlags = format.RestoreStringSingleQuotes | format.RestoreKeyWordUppercase
+const RestoreSetVariableFlags = format.RestoreStringSingleQuotes
 
 func getSysVarsFromCtx(ctx context.Context) map[string]*ast.VariableAssignment {
 	v := ctx.Value(constant.ContextKeySessionVariable)
