@@ -274,7 +274,7 @@ func fsmHandler_PreFetchConn_EventDisableAutoCommit(b *BackendConnManager, ctx c
 		errClosePooledBackendConn(conn, b.ns.Name())
 		return nil, err
 	}
-	b.txnConn = conn
+	b.setAttachedConn(conn)
 	return nil, nil
 }
 
@@ -287,7 +287,7 @@ func fsmHandler_PreFetchConn_EventBegin(b *BackendConnManager, ctx context.Conte
 		errClosePooledBackendConn(conn, b.ns.Name())
 		return nil, err
 	}
-	b.txnConn = conn
+	b.setAttachedConn(conn)
 	return nil, nil
 }
 
@@ -312,7 +312,7 @@ func fsmHandler_PostReleaseConn_EventCommitOrRollback(b *BackendConnManager, ctx
 		b.txnConn.PutBack()
 	}
 
-	b.txnConn = nil
+	b.unsetAttachedConn()
 	return nil, err
 }
 
@@ -347,7 +347,7 @@ func fsmHandler_NoPrepare_PreFetchConn_EventStmtPrepare(b *BackendConnManager, c
 		return nil, err
 	}
 
-	b.txnConn = conn
+	b.setAttachedConn(conn)
 	b.isPrepared = true
 	return stmt, nil
 }

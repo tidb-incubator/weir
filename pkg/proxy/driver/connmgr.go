@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
@@ -122,7 +123,7 @@ func (f *BackendConnManager) Close() error {
 		errClosePooledBackendConn(f.txnConn, f.ns.Name())
 	}
 	f.state = stateInitial
-	f.txnConn = nil
+	f.unsetAttachedConn()
 	return nil
 }
 
@@ -153,7 +154,17 @@ func (f *BackendConnManager) releaseAttachedConn(err error) {
 	} else {
 		f.txnConn.PutBack()
 	}
+	f.unsetAttachedConn()
+}
+
+func (f *BackendConnManager) setAttachedConn(conn PooledBackendConn) {
+	f.txnConn = conn
+	metrics.QueryCtxAttachedConnGauge.WithLabelValues(f.ns.Name()).Inc()
+}
+
+func (f *BackendConnManager) unsetAttachedConn() {
 	f.txnConn = nil
+	metrics.QueryCtxAttachedConnGauge.WithLabelValues(f.ns.Name()).Desc()
 }
 
 func errClosePooledBackendConn(conn PooledBackendConn, ns string) {
