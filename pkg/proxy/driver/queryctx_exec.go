@@ -10,7 +10,9 @@ import (
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
+	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
+	"go.uber.org/zap"
 )
 
 func (q *QueryCtxImpl) execute(ctx context.Context, sql string) (*gomysql.Result, error) {
@@ -40,6 +42,7 @@ func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sql string, stmtNode as
 func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
 	switch stmt := stmtNode.(type) {
 	case *ast.SetStmt:
+		logutil.BgLogger().Debug("executeStmt set", zap.String("sql", sql), zap.Reflect("stmt", stmtNode))
 		return nil, q.setVariable(ctx, stmt)
 	case *ast.UseStmt:
 		return nil, q.useDB(ctx, stmt.DBName)
