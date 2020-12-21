@@ -180,12 +180,19 @@ func getSetSysVarsSQL(toSet, toRemove []*ast.VariableAssignment) (string, error)
 			Name:     v.Name,
 			Value:    &ast.DefaultExpr{},
 			IsGlobal: false,
-			IsSystem: true,
+			IsSystem: getIsSystemFlagByName(v.Name),
 		}
 		stmt.Variables = append(stmt.Variables, defaultVar)
 	}
 
 	return getRestoreSQLFromStmt(stmt)
+}
+
+func getIsSystemFlagByName(name string) bool {
+	if name == ast.SetNames || name == ast.SetCharset {
+		return false
+	}
+	return true
 }
 
 func getRestoreSQLFromStmt(stmt *ast.SetStmt) (string, error) {
