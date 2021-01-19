@@ -149,9 +149,10 @@ func (q *QueryCtxImpl) FieldList(tableName string) ([]*server.ColumnInfo, error)
 	return columns, nil
 }
 
-// TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) Close() error {
-	q.ns.DescConnCount()
+	if q.ns != nil {
+		q.ns.DescConnCount()
+	}
 	if q.connMgr != nil {
 		return q.connMgr.Close()
 	}
