@@ -138,7 +138,7 @@ func (f *BackendConnManager) queryWithoutTxn(ctx context.Context, db, sql string
 
 	defer func() {
 		if err != nil && isConnError(err) {
-			if errClose := conn.ErrorClose(); err != nil {
+			if errClose := conn.ErrorClose(); errClose != nil {
 				logutil.BgLogger().Error("close backend conn error", zap.Error(errClose))
 			}
 		} else {
