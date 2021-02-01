@@ -2,11 +2,13 @@ package driver
 
 import (
 	"context"
+	"database/sql/driver"
 	"sync"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/util/logutil"
+	"github.com/pkg/errors"
 	gomysql "github.com/siddontang/go-mysql/mysql"
 	"go.uber.org/zap"
 )
@@ -128,17 +130,29 @@ func (f *BackendConnManager) Close() error {
 }
 
 func (f *BackendConnManager) queryWithoutTxn(ctx context.Context, db, sql string) (*gomysql.Result, error) {
+	var err error
 	conn, err := f.ns.GetPooledConn(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.PutBack()
+
+	defer func() {
+		if err != nil && isConnError(err) {
+			if errClose := conn.ErrorClose(); err != nil {
+				logutil.BgLogger().Error("close backend conn error", zap.Error(errClose))
+			}
+		} else {
+			conn.PutBack()
+		}
+	}()
 
 	if err = conn.UseDB(db); err != nil {
 		return nil, err
 	}
 
-	return conn.Execute(sql)
+	var ret *gomysql.Result
+	ret, err = conn.Execute(sql)
+	return ret, err
 }
 
 func (f *BackendConnManager) queryInTxn(ctx context.Context, db, sql string) (*gomysql.Result, error) {
@@ -171,4 +185,8 @@ func errClosePooledBackendConn(conn PooledBackendConn, ns string) {
 	if err := conn.ErrorClose(); err != nil {
 		logutil.BgLogger().Error("close backend conn error", zap.Error(err), zap.String("namespace", ns))
 	}
+}
+
+func isConnError(err error) bool {
+	return errors.As(err, &gomysql.ErrBadConn) || errors.As(err, &driver.ErrBadConn)
 }
