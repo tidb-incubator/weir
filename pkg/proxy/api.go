@@ -76,11 +76,17 @@ func CreateHttpApiServer(proxyServer *server.Server, nsmgr *namespace.NamespaceM
 	metricsRouteGroup.GET("/", gin.WrapF(promhttp.Handler().ServeHTTP))
 
 	pprofRouteGroup := engine.Group("/debug/pprof")
-	pprofRouteGroup.GET("/", gin.WrapF(pprof.Index))
-	pprofRouteGroup.GET("/cmdline", gin.WrapF(pprof.Cmdline))
-	pprofRouteGroup.GET("/profile", gin.WrapF(pprof.Profile))
-	pprofRouteGroup.GET("/symbol", gin.WrapF(pprof.Symbol))
-	pprofRouteGroup.GET("/trace", gin.WrapF(pprof.Trace))
+	pprofRouteGroup.Any("/", gin.WrapF(pprof.Index))
+	pprofRouteGroup.Any("/cmdline", gin.WrapF(pprof.Cmdline))
+	pprofRouteGroup.Any("/profile", gin.WrapF(pprof.Profile))
+	pprofRouteGroup.Any("/symbol", gin.WrapF(pprof.Symbol))
+	pprofRouteGroup.Any("/trace", gin.WrapF(pprof.Trace))
+	pprofRouteGroup.Any("/block", gin.WrapF(pprof.Handler("block").ServeHTTP))
+	pprofRouteGroup.Any("/goroutine", gin.WrapF(pprof.Handler("goroutine").ServeHTTP))
+	pprofRouteGroup.Any("/heap", gin.WrapF(pprof.Handler("heap").ServeHTTP))
+	pprofRouteGroup.Any("/mutex", gin.WrapF(pprof.Handler("mutex").ServeHTTP))
+	pprofRouteGroup.Any("/threadcreate", gin.WrapF(pprof.Handler("threadcreate").ServeHTTP))
+	pprofRouteGroup.Any("/allocs", gin.WrapF(pprof.Handler("allocs").ServeHTTP))
 
 	apiServer.engine = engine
 	return apiServer, nil
