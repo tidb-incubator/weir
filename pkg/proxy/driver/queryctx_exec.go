@@ -19,7 +19,6 @@ func (q *QueryCtxImpl) execute(ctx context.Context, sql string) (*gomysql.Result
 	if err != nil {
 		return nil, err
 	}
-
 	if q.isStmtDenied(ctx, sql, stmt) {
 		q.recordDeniedQueryMetrics(stmt)
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
@@ -34,6 +33,8 @@ func (q *QueryCtxImpl) execute(ctx context.Context, sql string) (*gomysql.Result
 
 // TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sql string, stmtNode ast.StmtNode) bool {
+	//
+
 	return false
 }
 

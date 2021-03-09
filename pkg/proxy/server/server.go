@@ -17,6 +17,7 @@ import (
 	"context"
 	"math/rand"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -41,6 +42,9 @@ var (
 	errAccessDenied            = terror.ClassServer.New(errno.ErrAccessDenied, errno.MySQLErrName[errno.ErrAccessDenied])
 	errConCount                = terror.ClassServer.New(errno.ErrConCount, errno.MySQLErrName[errno.ErrConCount])
 	errSecureTransportRequired = terror.ClassServer.New(errno.ErrSecureTransportRequired, errno.MySQLErrName[errno.ErrSecureTransportRequired])
+
+	timeWheelUnit       = time.Second * 1
+	timeWheelBucketsNum = 3600
 )
 
 // DefaultCapability is the capability of the server when it is created using the default configuration.
@@ -52,22 +56,41 @@ const defaultCapability = mysql.ClientLongPassword | mysql.ClientLongFlag |
 	mysql.ClientConnectAtts | mysql.ClientPluginAuth | mysql.ClientInteractive
 
 type Server struct {
-	cfg               *config.Proxy
-	tlsConfig         unsafe.Pointer // *tls.Config
-	driver            IDriver
-	listener          net.Listener
-	rwlock            sync.RWMutex
-	clients           map[uint32]*clientConn
-	baseConnID        uint32
-	capability        uint32
+	cfg            *config.Proxy
+	tlsConfig      unsafe.Pointer // *tls.Config
+	driver         IDriver
+	listener       net.Listener
+	rwlock         sync.RWMutex
+	clients        map[uint32]*clientConn
+	baseConnID     uint32
+	capability     uint32
+	sessionTimeout time.Duration
+	tw             *TimeWheel
 }
 
 // NewServer creates a new Server.
 func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
+	// Init time wheel
+	tw, err := NewTimeWheel(timeWheelUnit, timeWheelBucketsNum)
+	if err != nil {
+		return nil, err
+	}
+	// start time wheel
+	tw.Start()
+
+	// init Server
 	s := &Server{
-		cfg:               cfg,
-		driver:            driver,
-		clients:           make(map[uint32]*clientConn),
+		cfg:     cfg,
+		driver:  driver,
+		clients: make(map[uint32]*clientConn),
+		tw:      tw,
+	}
+
+	st := strconv.Itoa(cfg.ProxyServer.SessionTimeout)
+	st = st + "s"
+	s.sessionTimeout, err = time.ParseDuration(st)
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO(eastfisher): set tlsConfig
@@ -161,6 +184,8 @@ func (s *Server) onConn(conn *clientConn) {
 	s.rwlock.Unlock()
 	metrics.ConnGauge.Set(float64(connections))
 
+	s.tw.Add(s.sessionTimeout, conn, func() { s.KillOneConnections(conn.connectionID) })
+
 	conn.Run(ctx)
 }
 
@@ -227,6 +252,21 @@ func (s *Server) KillAllConnections() {
 	s.rwlock.RLock()
 	defer s.rwlock.RUnlock()
 	for _, conn := range s.clients {
+		atomic.StoreInt32(&conn.status, connStatusShutdown)
+		if err := conn.closeWithoutLock(); err != nil {
+			terror.Log(err)
+		}
+		killConn(conn)
+	}
+}
+
+// KillOneConnections kills one connections when server is not gracefully shutdown.
+func (s *Server) KillOneConnections(connectionID uint32) {
+	logutil.BgLogger().Info("[server] kill one connections.")
+
+	s.rwlock.RLock()
+	defer s.rwlock.RUnlock()
+	if conn, ok := s.clients[connectionID]; ok {
 		atomic.StoreInt32(&conn.status, connStatusShutdown)
 		if err := conn.closeWithoutLock(); err != nil {
 			terror.Log(err)

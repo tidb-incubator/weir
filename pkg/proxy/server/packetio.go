@@ -101,6 +101,7 @@ func (p *packetIO) readOnePacket() ([]byte, error) {
 	return data, nil
 }
 
+//todo(malik)
 func (p *packetIO) readPacket() ([]byte, error) {
 	data, err := p.readOnePacket()
 	if err != nil {

@@ -130,6 +130,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 			terror.Log(err)
 			metrics.PanicCounter.WithLabelValues(metrics.LabelSession).Inc()
 		}
+		cc.server.tw.Remove(cc)
 		if atomic.LoadInt32(&cc.status) != connStatusShutdown {
 			err := cc.Close()
 			terror.Log(err)
@@ -146,9 +147,14 @@ func (cc *clientConn) Run(ctx context.Context) {
 		}
 
 		cc.alloc.Reset()
-		// close connection when idle time is more than wait_timeout
-		waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
-		cc.pkt.setReadTimeout(time.Duration(waitTimeout) * time.Second)
+
+		/*
+			close connection when idle time is more than wait_timeout
+			waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
+			cc.pkt.setReadTimeout(time.Duration(waitTimeout) * time.Second)
+		*/
+		cc.server.tw.Add(cc.server.sessionTimeout, cc, func() { cc.server.KillOneConnections(cc.connectionID) })
+
 		start := time.Now()
 		data, err := cc.readPacket()
 		if err != nil {
@@ -157,7 +163,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 					idleTime := time.Since(start)
 					logutil.Logger(ctx).Info("read packet timeout, close this connection",
 						zap.Duration("idle", idleTime),
-						zap.Uint64("waitTimeout", waitTimeout),
+						zap.Uint64("waitTimeout", 900),
 						zap.Error(err),
 					)
 				} else {
