@@ -43,6 +43,12 @@ const (
 	connStatusWaitShutdown // Notified by server to close.
 )
 
+const (
+	WRITE_TIMEOUT = "write_timeout"
+
+	DEF_WRITE_TIMEOUT = 10
+)
+
 var (
 	queryTotalCountOk = [...]prometheus.Counter{
 		mysql.ComSleep:            metrics.QueryTotalCounter.WithLabelValues("Sleep", "OK"),
@@ -130,7 +136,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 			terror.Log(err)
 			metrics.PanicCounter.WithLabelValues(metrics.LabelSession).Inc()
 		}
-		cc.server.tw.Remove(cc)
+		cc.server.tw.Remove(cc.connectionID)
 		if atomic.LoadInt32(&cc.status) != connStatusShutdown {
 			err := cc.Close()
 			terror.Log(err)
@@ -149,29 +155,24 @@ func (cc *clientConn) Run(ctx context.Context) {
 		cc.alloc.Reset()
 
 		/*
-			close connection when idle time is more than wait_timeout
-			waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
+			// close connection when idle time is more than wait_timeout
 			cc.pkt.setReadTimeout(time.Duration(waitTimeout) * time.Second)
 		*/
-		cc.server.tw.Add(cc.server.sessionTimeout, cc, func() { cc.server.KillOneConnections(cc.connectionID) })
+		waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
+		cc.server.tw.Remove(cc.connectionID)
+		defer cc.server.tw.Add(time.Duration(waitTimeout)*time.Second, cc.connectionID, func() { cc.killReadPacketTimeOutConn(ctx, cc.connectionID, time.Now()) })
 
-		start := time.Now()
+		t := time.Now()
+		writeTimeout := cc.getSessionVarsWriteTimeoutTimeout(ctx)
+		cc.server.tw.Add(time.Duration(writeTimeout)*time.Second, cc, func() { cc.killSessionTimeOutConn(ctx, cc.connectionID, t) })
+
 		data, err := cc.readPacket()
 		if err != nil {
 			if terror.ErrorNotEqual(err, io.EOF) {
-				if netErr, isNetErr := errors.Cause(err).(net.Error); isNetErr && netErr.Timeout() {
-					idleTime := time.Since(start)
-					logutil.Logger(ctx).Info("read packet timeout, close this connection",
-						zap.Duration("idle", idleTime),
-						zap.Uint64("waitTimeout", 900),
-						zap.Error(err),
-					)
-				} else {
-					errStack := errors.ErrorStack(err)
-					if !strings.Contains(errStack, "use of closed network connection") {
-						logutil.Logger(ctx).Warn("read packet failed, close this connection",
-							zap.Error(errors.SuspendStack(err)))
-					}
+				errStack := errors.ErrorStack(err)
+				if !strings.Contains(errStack, "use of closed network connection") {
+					logutil.Logger(ctx).Warn("read packet failed, close this connection",
+						zap.Error(errors.SuspendStack(err)))
 				}
 			}
 			return
@@ -238,6 +239,21 @@ func (cc *clientConn) getSessionVarsWaitTimeout(ctx context.Context) uint64 {
 	return waitTimeout
 }
 
+// getSessionVarsWaitTimeout get session variable write_timeout
+func (cc *clientConn) getSessionVarsWriteTimeoutTimeout(ctx context.Context) uint64 {
+	valStr, exists := cc.ctx.GetSessionVars().GetSystemVar(WRITE_TIMEOUT)
+	if !exists {
+		return DEF_WRITE_TIMEOUT
+	}
+	newWriteTimeout, err := strconv.ParseUint(valStr, 10, 64)
+	if err != nil {
+		logutil.Logger(ctx).Warn("get sysval wait_timeout failed, use default value", zap.Error(err))
+		// if get write_timeout error, use default value
+		return DEF_WRITE_TIMEOUT
+	}
+	return newWriteTimeout
+}
+
 func (cc *clientConn) SessionStatusToString() string {
 	status := cc.ctx.Status()
 	inTxn, autoCommit := 0, 0
@@ -249,6 +265,24 @@ func (cc *clientConn) SessionStatusToString() string {
 	}
 	return fmt.Sprintf("inTxn:%d, autocommit:%d",
 		inTxn, autoCommit,
+	)
+}
+
+func (cc *clientConn) killSessionTimeOutConn(ctx context.Context, connectionID uint32, t time.Time) {
+	cc.server.KillOneConnections(connectionID)
+	waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
+	elapsed := time.Since(t)
+	logutil.Logger(ctx).Info("read packet timeout, close this connection",
+		zap.Duration("idle", elapsed),
+		zap.Uint64("waitTimeout", uint64(waitTimeout)),
+	)
+}
+
+func (cc *clientConn) killReadPacketTimeOutConn(ctx context.Context, connectionID uint32, t time.Time) {
+	cc.server.KillOneConnections(connectionID)
+	elapsed := time.Since(t)
+	logutil.Logger(ctx).Info("read packet timeout, close this connection",
+		zap.Duration("idle", elapsed),
 	)
 }
 

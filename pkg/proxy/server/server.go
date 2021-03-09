@@ -17,13 +17,13 @@ import (
 	"context"
 	"math/rand"
 	"net"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
+	"github.com/pingcap-incubator/weir/pkg/util/timer"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
@@ -56,41 +56,31 @@ const defaultCapability = mysql.ClientLongPassword | mysql.ClientLongFlag |
 	mysql.ClientConnectAtts | mysql.ClientPluginAuth | mysql.ClientInteractive
 
 type Server struct {
-	cfg            *config.Proxy
-	tlsConfig      unsafe.Pointer // *tls.Config
-	driver         IDriver
-	listener       net.Listener
-	rwlock         sync.RWMutex
-	clients        map[uint32]*clientConn
-	baseConnID     uint32
-	capability     uint32
-	sessionTimeout time.Duration
-	tw             *TimeWheel
+	cfg        *config.Proxy
+	tlsConfig  unsafe.Pointer // *tls.Config
+	driver     IDriver
+	listener   net.Listener
+	rwlock     sync.RWMutex
+	clients    map[uint32]*clientConn
+	baseConnID uint32
+	capability uint32
+	tw         *timer.TimeWheel
 }
 
 // NewServer creates a new Server.
 func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
-	// Init time wheel
-	tw, err := NewTimeWheel(timeWheelUnit, timeWheelBucketsNum)
+	tw, err := timer.NewTimeWheel(timeWheelUnit, timeWheelBucketsNum)
 	if err != nil {
 		return nil, err
 	}
-	// start time wheel
+
 	tw.Start()
 
-	// init Server
 	s := &Server{
 		cfg:     cfg,
 		driver:  driver,
 		clients: make(map[uint32]*clientConn),
 		tw:      tw,
-	}
-
-	st := strconv.Itoa(cfg.ProxyServer.SessionTimeout)
-	st = st + "s"
-	s.sessionTimeout, err = time.ParseDuration(st)
-	if err != nil {
-		return nil, err
 	}
 
 	// TODO(eastfisher): set tlsConfig
@@ -184,7 +174,9 @@ func (s *Server) onConn(conn *clientConn) {
 	s.rwlock.Unlock()
 	metrics.ConnGauge.Set(float64(connections))
 
-	s.tw.Add(s.sessionTimeout, conn, func() { s.KillOneConnections(conn.connectionID) })
+	t := time.Now()
+	waitTimeout := conn.getSessionVarsWaitTimeout(ctx)
+	s.tw.Add(time.Duration(waitTimeout)*time.Second, conn.connectionID, func() { conn.killSessionTimeOutConn(ctx, conn.connectionID, t) })
 
 	conn.Run(ctx)
 }
