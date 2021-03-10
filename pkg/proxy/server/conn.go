@@ -230,21 +230,6 @@ func (cc *clientConn) getSessionVarsWaitTimeout(ctx context.Context) uint64 {
 	return waitTimeout
 }
 
-// getSessionVarsWaitTimeout get session variable write_timeout
-func (cc *clientConn) getSessionVarsWriteTimeoutTimeout(ctx context.Context) uint64 {
-	valStr, exists := cc.ctx.GetSessionVars().GetSystemVar(WRITE_TIMEOUT)
-	if !exists {
-		return DEF_WRITE_TIMEOUT
-	}
-	newWriteTimeout, err := strconv.ParseUint(valStr, 10, 64)
-	if err != nil {
-		logutil.Logger(ctx).Warn("get sysval wait_timeout failed, use default value", zap.Error(err))
-		// if get write_timeout error, use default value
-		return DEF_WRITE_TIMEOUT
-	}
-	return newWriteTimeout
-}
-
 func (cc *clientConn) SessionStatusToString() string {
 	status := cc.ctx.Status()
 	inTxn, autoCommit := 0, 0
