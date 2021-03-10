@@ -2,6 +2,7 @@ version: "v1"
 proxy_server:
   addr: "0.0.0.0:6000"
   max_connections: 10
+  session_timeout: 600
 admin_server:
   addr: "0.0.0.0:6001"
   enable_basic_auth: false

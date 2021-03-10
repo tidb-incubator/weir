@@ -46,7 +46,7 @@ const (
 const (
 	WRITE_TIMEOUT = "write_timeout"
 
-	DEF_WRITE_TIMEOUT = 10
+	DEF_WRITE_TIMEOUT = 5
 )
 
 var (
@@ -154,17 +154,8 @@ func (cc *clientConn) Run(ctx context.Context) {
 
 		cc.alloc.Reset()
 
-		/*
-			// close connection when idle time is more than wait_timeout
-			cc.pkt.setReadTimeout(time.Duration(waitTimeout) * time.Second)
-		*/
-		waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
-		cc.server.tw.Remove(cc.connectionID)
-		defer cc.server.tw.Add(time.Duration(waitTimeout)*time.Second, cc.connectionID, func() { cc.killReadPacketTimeOutConn(ctx, cc.connectionID, time.Now()) })
-
-		t := time.Now()
-		writeTimeout := cc.getSessionVarsWriteTimeoutTimeout(ctx)
-		cc.server.tw.Add(time.Duration(writeTimeout)*time.Second, cc, func() { cc.killSessionTimeOutConn(ctx, cc.connectionID, t) })
+		// close connection when idle time is more than wait_timeout
+		cc.setWaitTimeout(ctx)
 
 		data, err := cc.readPacket()
 		if err != nil {
@@ -268,22 +259,23 @@ func (cc *clientConn) SessionStatusToString() string {
 	)
 }
 
-func (cc *clientConn) killSessionTimeOutConn(ctx context.Context, connectionID uint32, t time.Time) {
+func (cc *clientConn) killWaitTimeOutConn(ctx context.Context, connectionID uint32, t time.Time) {
 	cc.server.KillOneConnections(connectionID)
-	waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
 	elapsed := time.Since(t)
-	logutil.Logger(ctx).Info("read packet timeout, close this connection",
+	logutil.Logger(ctx).Info("wait timeout, close this connection",
 		zap.Duration("idle", elapsed),
-		zap.Uint64("waitTimeout", uint64(waitTimeout)),
 	)
 }
 
-func (cc *clientConn) killReadPacketTimeOutConn(ctx context.Context, connectionID uint32, t time.Time) {
-	cc.server.KillOneConnections(connectionID)
-	elapsed := time.Since(t)
-	logutil.Logger(ctx).Info("read packet timeout, close this connection",
-		zap.Duration("idle", elapsed),
-	)
+func (cc *clientConn) setWaitTimeout(ctx context.Context) {
+	var wt time.Duration
+	waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
+	wt = cc.server.sessionTimeout
+	if waitTimeout != 0 {
+		wt = time.Duration(waitTimeout)
+	}
+	t := time.Now()
+	cc.server.tw.Add(wt, cc.connectionID, func() { cc.killWaitTimeOutConn(ctx, cc.connectionID, t) })
 }
 
 func (cc *clientConn) Close() error {

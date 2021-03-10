@@ -56,15 +56,16 @@ const defaultCapability = mysql.ClientLongPassword | mysql.ClientLongFlag |
 	mysql.ClientConnectAtts | mysql.ClientPluginAuth | mysql.ClientInteractive
 
 type Server struct {
-	cfg        *config.Proxy
-	tlsConfig  unsafe.Pointer // *tls.Config
-	driver     IDriver
-	listener   net.Listener
-	rwlock     sync.RWMutex
-	clients    map[uint32]*clientConn
-	baseConnID uint32
-	capability uint32
-	tw         *timer.TimeWheel
+	cfg            *config.Proxy
+	tlsConfig      unsafe.Pointer // *tls.Config
+	driver         IDriver
+	listener       net.Listener
+	rwlock         sync.RWMutex
+	clients        map[uint32]*clientConn
+	baseConnID     uint32
+	capability     uint32
+	sessionTimeout time.Duration
+	tw             *timer.TimeWheel
 }
 
 // NewServer creates a new Server.
@@ -77,10 +78,11 @@ func NewServer(cfg *config.Proxy, driver IDriver) (*Server, error) {
 	tw.Start()
 
 	s := &Server{
-		cfg:     cfg,
-		driver:  driver,
-		clients: make(map[uint32]*clientConn),
-		tw:      tw,
+		cfg:            cfg,
+		driver:         driver,
+		clients:        make(map[uint32]*clientConn),
+		sessionTimeout: time.Duration(cfg.ProxyServer.SessionTimeout) * time.Second,
+		tw:             tw,
 	}
 
 	// TODO(eastfisher): set tlsConfig
@@ -174,10 +176,7 @@ func (s *Server) onConn(conn *clientConn) {
 	s.rwlock.Unlock()
 	metrics.ConnGauge.Set(float64(connections))
 
-	t := time.Now()
-	waitTimeout := conn.getSessionVarsWaitTimeout(ctx)
-	s.tw.Add(time.Duration(waitTimeout)*time.Second, conn.connectionID, func() { conn.killSessionTimeOutConn(ctx, conn.connectionID, t) })
-
+	conn.setWaitTimeout(ctx)
 	conn.Run(ctx)
 }
 
