@@ -19,9 +19,6 @@ type Proxy struct {
 }
 
 func supplementProxyConfig(cfg *config.Proxy) *config.Proxy {
-	if cfg.ProxyServer.SessionTimeout <= config.MIN_SESSION_TIMEOUT {
-		cfg.ProxyServer.SessionTimeout = config.SESSION_TIMEOUT
-	}
 	return cfg
 }
 
