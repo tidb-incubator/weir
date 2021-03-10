@@ -43,6 +43,12 @@ const (
 	connStatusWaitShutdown // Notified by server to close.
 )
 
+const (
+	WRITE_TIMEOUT = "write_timeout"
+
+	DEF_WRITE_TIMEOUT = 5
+)
+
 var (
 	queryTotalCountOk = [...]prometheus.Counter{
 		mysql.ComSleep:            metrics.QueryTotalCounter.WithLabelValues("Sleep", "OK"),
@@ -130,6 +136,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 			terror.Log(err)
 			metrics.PanicCounter.WithLabelValues(metrics.LabelSession).Inc()
 		}
+		cc.server.tw.Remove(cc.connectionID)
 		if atomic.LoadInt32(&cc.status) != connStatusShutdown {
 			err := cc.Close()
 			terror.Log(err)
@@ -146,26 +153,17 @@ func (cc *clientConn) Run(ctx context.Context) {
 		}
 
 		cc.alloc.Reset()
+
 		// close connection when idle time is more than wait_timeout
-		waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
-		cc.pkt.setReadTimeout(time.Duration(waitTimeout) * time.Second)
-		start := time.Now()
+		cc.setWaitTimeout(ctx)
+
 		data, err := cc.readPacket()
 		if err != nil {
 			if terror.ErrorNotEqual(err, io.EOF) {
-				if netErr, isNetErr := errors.Cause(err).(net.Error); isNetErr && netErr.Timeout() {
-					idleTime := time.Since(start)
-					logutil.Logger(ctx).Info("read packet timeout, close this connection",
-						zap.Duration("idle", idleTime),
-						zap.Uint64("waitTimeout", waitTimeout),
-						zap.Error(err),
-					)
-				} else {
-					errStack := errors.ErrorStack(err)
-					if !strings.Contains(errStack, "use of closed network connection") {
-						logutil.Logger(ctx).Warn("read packet failed, close this connection",
-							zap.Error(errors.SuspendStack(err)))
-					}
+				errStack := errors.ErrorStack(err)
+				if !strings.Contains(errStack, "use of closed network connection") {
+					logutil.Logger(ctx).Warn("read packet failed, close this connection",
+						zap.Error(errors.SuspendStack(err)))
 				}
 			}
 			return
@@ -244,6 +242,25 @@ func (cc *clientConn) SessionStatusToString() string {
 	return fmt.Sprintf("inTxn:%d, autocommit:%d",
 		inTxn, autoCommit,
 	)
+}
+
+func (cc *clientConn) killWaitTimeOutConn(ctx context.Context, connectionID uint32, t time.Time) {
+	cc.server.KillOneConnections(connectionID)
+	elapsed := time.Since(t)
+	logutil.Logger(ctx).Info("wait timeout, close this connection",
+		zap.Duration("idle", elapsed),
+	)
+}
+
+func (cc *clientConn) setWaitTimeout(ctx context.Context) {
+	var wt time.Duration
+	waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
+	wt = cc.server.sessionTimeout
+	if waitTimeout != 0 {
+		wt = time.Duration(waitTimeout)
+	}
+	t := time.Now()
+	cc.server.tw.Add(wt, cc.connectionID, func() { cc.killWaitTimeOutConn(ctx, cc.connectionID, t) })
 }
 
 func (cc *clientConn) Close() error {

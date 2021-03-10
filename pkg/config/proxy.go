@@ -1,5 +1,9 @@
 package config
 
+const (
+	MIN_SESSION_TIMEOUT = 600
+)
+
 type Proxy struct {
 	Version      string       `yaml:"version"`
 	ProxyServer  ProxyServer  `yaml:"proxy_server"`
@@ -13,6 +17,7 @@ type Proxy struct {
 type ProxyServer struct {
 	Addr           string `yaml:"addr"`
 	MaxConnections uint32 `yaml:"max_connections"`
+	SessionTimeout int    `yaml:"session_timeout"`
 }
 
 type AdminServer struct {
