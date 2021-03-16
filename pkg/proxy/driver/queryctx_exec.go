@@ -229,6 +229,7 @@ func (f *FirstTableNameVisitor) Enter(n ast.Node) (node ast.Node, skipChildren b
 	switch nn := n.(type) {
 	case *ast.TableName:
 		f.table = nn.Name.String()
+		f.found = true
 		return n, true
 	}
 	return n, false
