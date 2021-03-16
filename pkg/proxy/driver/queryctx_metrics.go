@@ -13,7 +13,7 @@ func (q *QueryCtxImpl) recordQueryMetrics(stmt ast.StmtNode, err error, duration
 	retLabel := metrics.RetLabel(err)
 
 	metrics.QueryCtxQueryCounter.WithLabelValues(ns, db, firstTableName, stmtType, retLabel).Inc()
-	metrics.QueryCtxQueryDurationHistogram.WithLabelValues(ns, firstTableName, db, stmtType).Observe(durationMilliSecond)
+	metrics.QueryCtxQueryDurationHistogram.WithLabelValues(ns, db, firstTableName, stmtType).Observe(durationMilliSecond)
 }
 
 func (q *QueryCtxImpl) recordDeniedQueryMetrics(stmt ast.StmtNode) {
