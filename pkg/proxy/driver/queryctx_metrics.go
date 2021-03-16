@@ -8,17 +8,19 @@ import (
 func (q *QueryCtxImpl) recordQueryMetrics(stmt ast.StmtNode, err error, durationMilliSecond float64) {
 	ns := q.ns.Name()
 	db := q.currentDB
+	firstTableName := extractFirstTableNameFromStmt(stmt)
 	stmtType := metrics.GetStmtTypeName(stmt)
 	retLabel := metrics.RetLabel(err)
 
-	metrics.QueryCtxQueryCounter.WithLabelValues(ns, db, stmtType, retLabel).Inc()
-	metrics.QueryCtxQueryDurationHistogram.WithLabelValues(ns, db, stmtType).Observe(durationMilliSecond)
+	metrics.QueryCtxQueryCounter.WithLabelValues(ns, db, firstTableName, stmtType, retLabel).Inc()
+	metrics.QueryCtxQueryDurationHistogram.WithLabelValues(ns, firstTableName, db, stmtType).Observe(durationMilliSecond)
 }
 
 func (q *QueryCtxImpl) recordDeniedQueryMetrics(stmt ast.StmtNode) {
 	ns := q.ns.Name()
 	db := q.currentDB
+	firstTableName := extractFirstTableNameFromStmt(stmt)
 	stmtType := metrics.GetStmtTypeName(stmt)
 
-	metrics.QueryCtxQueryDeniedCounter.WithLabelValues(ns, db, stmtType).Inc()
+	metrics.QueryCtxQueryDeniedCounter.WithLabelValues(ns, db, firstTableName, stmtType).Inc()
 }
