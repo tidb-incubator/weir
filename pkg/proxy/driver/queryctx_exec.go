@@ -219,3 +219,31 @@ func (q *QueryCtxImpl) commitOrRollback(ctx context.Context, commit bool) error 
 	q.connMgr.MergeStatus(q.sessionVars)
 	return err
 }
+
+type FirstTableNameVisitor struct {
+	table string
+	found bool
+}
+
+func (f *FirstTableNameVisitor) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
+	switch nn := n.(type) {
+	case *ast.TableName:
+		f.table = nn.Name.String()
+		return n, true
+	}
+	return n, false
+}
+
+func (f *FirstTableNameVisitor) Leave(n ast.Node) (node ast.Node, ok bool) {
+	return n, !f.found
+}
+
+func (f *FirstTableNameVisitor) TableName() string {
+	return f.table
+}
+
+func extractFirstTableNameFromStmt(stmt ast.StmtNode) string {
+	visitor := &FirstTableNameVisitor{}
+	stmt.Accept(visitor)
+	return visitor.table
+}
