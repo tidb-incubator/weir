@@ -139,11 +139,11 @@ func (q *QueryCtxImpl) setVariable(ctx context.Context, stmt *ast.SetStmt) error
 		switch strings.ToLower(v.Name) {
 		case variable.AutoCommit:
 			autoCommitVar = v
-		default:
-			if v.IsGlobal {
-				return errors.Errorf("cannot set variable in global scope")
-			}
-			sysVars = append(sysVars, v)
+			//default:
+			//	if v.IsGlobal {
+			//		return errors.Errorf("cannot set variable in global scope")
+			//	}
+			//	sysVars = append(sysVars, v)
 		}
 	}
 
