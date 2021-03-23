@@ -188,5 +188,5 @@ func errClosePooledBackendConn(conn PooledBackendConn, ns string) {
 }
 
 func isConnError(err error) bool {
-	return errors.As(err, &gomysql.ErrBadConn) || errors.As(err, &driver.ErrBadConn)
+	return errors.Is(err, gomysql.ErrBadConn) || errors.Is(err, driver.ErrBadConn)
 }
