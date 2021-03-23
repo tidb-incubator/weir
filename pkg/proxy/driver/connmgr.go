@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
+	utilerrors "github.com/pingcap-incubator/weir/pkg/util/errors"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/util/logutil"
-	"github.com/pkg/errors"
 	gomysql "github.com/siddontang/go-mysql/mysql"
 	"go.uber.org/zap"
 )
@@ -188,5 +188,5 @@ func errClosePooledBackendConn(conn PooledBackendConn, ns string) {
 }
 
 func isConnError(err error) bool {
-	return errors.Is(err, gomysql.ErrBadConn) || errors.Is(err, driver.ErrBadConn)
+	return utilerrors.Is(err, gomysql.ErrBadConn) || utilerrors.Is(err, driver.ErrBadConn)
 }
