@@ -17,5 +17,5 @@ func NewDriverImpl(nsmgr NamespaceManager) *DriverImpl {
 }
 
 func (d *DriverImpl) OpenCtx(connID uint64, capability uint32, collation uint8, dbname string, tlsState *tls.ConnectionState) (server.QueryCtx, error) {
-	return NewQueryCtxImpl(d.nsmgr), nil
+	return NewQueryCtxImpl(d.nsmgr, connID), nil
 }

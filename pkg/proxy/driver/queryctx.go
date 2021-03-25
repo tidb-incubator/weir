@@ -36,6 +36,7 @@ const (
 )
 
 type QueryCtxImpl struct {
+	connId      uint64
 	nsmgr       NamespaceManager
 	ns          Namespace
 	currentDB   string
@@ -48,8 +49,9 @@ type QueryCtxImpl struct {
 	useBreaker         bool
 }
 
-func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
+func NewQueryCtxImpl(nsmgr NamespaceManager, connId uint64) *QueryCtxImpl {
 	return &QueryCtxImpl{
+		connId:      connId,
 		nsmgr:       nsmgr,
 		parser:      parser.New(),
 		sessionVars: NewSessionVarsWrapper(variable.NewSessionVars()),
