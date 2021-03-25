@@ -273,7 +273,7 @@ func (f *AstVisitor) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
 }
 
 func (f *AstVisitor) Leave(n ast.Node) (node ast.Node, ok bool) {
-	return n, !f.found
+	return n, true
 }
 
 func (f *AstVisitor) TableName() string {
@@ -285,9 +285,9 @@ func (f *AstVisitor) SqlFeature() string {
 }
 
 func extractAstVisit(stmt ast.StmtNode) (*AstVisitor, error) {
-	visitor := &AstVisitor{}
+	visitor := AstVisitor{}
 
-	stmt.Accept(visitor)
+	stmt.Accept(&visitor)
 
 	sb := strings.Builder{}
 	if err := stmt.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb)); err != nil {
@@ -295,7 +295,7 @@ func extractAstVisit(stmt ast.StmtNode) (*AstVisitor, error) {
 	}
 	visitor.sqlFeature = sb.String()
 
-	return visitor, nil
+	return &visitor, nil
 }
 
 func UInt322Bytes(n uint32) []byte {

@@ -13,6 +13,7 @@ type Namespace interface {
 	Name() string
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
+	GetDeniedSQLs() map[uint32]struct{}
 	GetPooledConn(context.Context) (PooledBackendConn, error)
 	IncrConnCount()
 	DescConnCount()

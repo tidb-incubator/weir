@@ -63,7 +63,10 @@ func (q *QueryCtxImpl) execute(ctx context.Context, stmtNode ast.StmtNode, sql s
 
 // TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sql string, stmtNode ast.StmtNode) bool {
-	//todo解析sql
+	deniedSQLs := q.ns.GetDeniedSQLs()
+	if _, ok := deniedSQLs[q.currentSqlParadigm]; ok {
+		return true
+	}
 
 	return false
 }

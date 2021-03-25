@@ -6,7 +6,6 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
-	"github.com/pingcap-incubator/weir/pkg/util/datastructure"
 	"github.com/pingcap/errors"
 )
 
@@ -66,27 +65,8 @@ func BuildBackend(ns string, cfg *config.BackendNamespace) (Backend, error) {
 }
 
 func BuildFrontend(cfg *config.FrontendNamespace) (Frontend, error) {
-	fns := &FrontendNamespace{
-		allowedDBs: cfg.AllowedDBs,
-	}
-	fns.allowedDBSet = datastructure.StringSliceToSet(cfg.AllowedDBs)
-
-	userPasswds := make(map[string]string)
-	for _, u := range cfg.Users {
-		userPasswds[u.Username] = u.Password
-	}
-	fns.userPasswd = userPasswds
-
-	return fns, nil
+	return CreateFrontendNamespace(cfg)
 }
-
-// func BuildBreaker(br *config.BreakerInfo) (BreakerHolder, error) {
-// 	breaker, err := NewBreaker(br)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return breaker, nil
-// }
 
 func parseBackendConfig(cfg *config.BackendNamespace) (*backend.BackendConfig, error) {
 	selectorType, valid := backend.SelectorNameToType(cfg.SelectorType)
