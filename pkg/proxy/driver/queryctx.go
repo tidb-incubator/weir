@@ -108,7 +108,7 @@ func (q *QueryCtxImpl) CurrentDB() string {
 	return q.currentDB
 }
 
-func (q *QueryCtxImpl) Execute(ctx context.Context, sql string, connectionID uint32) (*gomysql.Result, error) {
+func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result, error) {
 	defer q.reset()
 	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
 	stmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
@@ -131,7 +131,7 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string, connectionID uin
 		q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
 	}
 
-	return q.execute(ctx, stmt, sql, connectionID)
+	return q.execute(ctx, stmt, sql, q.connId)
 }
 
 func (q *QueryCtxImpl) reset() {

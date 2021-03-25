@@ -14,7 +14,7 @@ import (
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
 
-func (q *QueryCtxImpl) execute(ctx context.Context, stmtNode ast.StmtNode, sql string, connectionID uint32) (*gomysql.Result, error) {
+func (q *QueryCtxImpl) execute(ctx context.Context, stmtNode ast.StmtNode, sql string, connectionID uint64) (*gomysql.Result, error) {
 	if q.isStmtDenied(ctx, sql, stmtNode) {
 		q.recordDeniedQueryMetrics(stmtNode)
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
