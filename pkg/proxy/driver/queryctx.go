@@ -148,7 +148,7 @@ func (q *QueryCtxImpl) preHandleBreaker(ctx context.Context, sql string, stmt as
 		return err
 	}
 
-	q.firstTableName = visitor.TableName()
+	q.firstTableName, _ = GetAstTableNameFromCtx(ctx)
 	q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
 	return nil
 }
@@ -305,19 +305,11 @@ func isStmtNeedToCheckCircuitBreaking(stmt ast.StmtNode) bool {
 }
 
 type AstVisitor struct {
-	table      string
 	sqlFeature string
-	found      bool
 }
 
 func (f *AstVisitor) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
 	switch nn := n.(type) {
-	case *ast.TableName:
-		if f.found {
-			return n, false
-		}
-		f.table = nn.Name.String()
-		f.found = true
 	case *ast.PatternInExpr:
 		if len(nn.List) == 0 {
 			return nn, false
@@ -332,11 +324,7 @@ func (f *AstVisitor) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
 }
 
 func (f *AstVisitor) Leave(n ast.Node) (node ast.Node, ok bool) {
-	return n, !f.found
-}
-
-func (f *AstVisitor) TableName() string {
-	return f.table
+	return n, true
 }
 
 func (f *AstVisitor) SqlFeature() string {
