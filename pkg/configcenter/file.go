@@ -1,12 +1,11 @@
 package configcenter
 
 import (
+	"github.com/pingcap-incubator/weir/pkg/config"
+	"github.com/pingcap/errors"
 	"io/ioutil"
 	"path"
 	"path/filepath"
-
-	"github.com/pingcap-incubator/weir/pkg/config"
-	"github.com/pingcap/errors"
 )
 
 var (
@@ -21,13 +20,13 @@ type FileConfigCenter struct {
 	nspath map[string]string            // key: namespace, value: config file path
 }
 
-func CreateFileConfigCenter(dir string) (*FileConfigCenter, error) {
-	yamlFiles, err := listAllYamlFiles(dir)
+func CreateFileConfigCenter(nsdir string) (*FileConfigCenter, error) {
+	yamlFiles, err := listAllYamlFiles(nsdir)
 	if err != nil {
 		return nil, err
 	}
 
-	c := newFileConfigCenter(dir)
+	c := newFileConfigCenter(nsdir)
 
 	for _, yamlFile := range yamlFiles {
 		fileData, err := ioutil.ReadFile(yamlFile)
@@ -41,7 +40,6 @@ func CreateFileConfigCenter(dir string) (*FileConfigCenter, error) {
 		c.cfgs[cfg.Namespace] = cfg
 		c.nspath[cfg.Namespace] = yamlFile
 	}
-
 	return c, nil
 }
 

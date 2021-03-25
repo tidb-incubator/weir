@@ -12,6 +12,7 @@ type FrontendNamespace struct {
 	allowedDBs   []string
 	allowedDBSet map[string]struct{}
 	userPasswd   map[string]string
+	deniedSQLs   map[uint32]struct{}
 }
 
 func CreateFrontendNamespace(namespace string, cfg *config.FrontendNamespace) (*FrontendNamespace, error) {
@@ -26,6 +27,9 @@ func CreateFrontendNamespace(namespace string, cfg *config.FrontendNamespace) (*
 	}
 	fns.userPasswd = userPasswd
 
+	// for _, sql := range cfg.DeniedSQLs {
+	//
+	// }
 	return fns, nil
 }
 

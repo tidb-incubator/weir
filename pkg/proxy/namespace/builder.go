@@ -5,12 +5,14 @@ import (
 
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
+	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	"github.com/pingcap-incubator/weir/pkg/util/datastructure"
 	"github.com/pingcap/errors"
 )
 
 type NamespaceImpl struct {
 	name string
+	Br   driver.Breaker
 	Backend
 	Frontend
 }
@@ -24,17 +26,29 @@ func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "build frontend error")
 	}
-
 	wrapper := &NamespaceImpl{
 		name:     cfg.Namespace,
 		Backend:  be,
 		Frontend: fe,
 	}
+	brm, err := NewBreaker(&cfg.Breaker)
+	if err != nil {
+		return nil, err
+	}
+	br, err := brm.GetBreaker()
+	if err != nil {
+		return nil, err
+	}
+	wrapper.Br = br
 	return wrapper, nil
 }
 
 func (n *NamespaceImpl) Name() string {
 	return n.name
+}
+
+func (n *NamespaceImpl) GetBreaker() (driver.Breaker, error) {
+	return n.Br, nil
 }
 
 func BuildBackend(ns string, cfg *config.BackendNamespace) (Backend, error) {
@@ -66,6 +80,14 @@ func BuildFrontend(cfg *config.FrontendNamespace) (Frontend, error) {
 	return fns, nil
 }
 
+// func BuildBreaker(br *config.BreakerInfo) (BreakerHolder, error) {
+// 	breaker, err := NewBreaker(br)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return breaker, nil
+// }
+
 func parseBackendConfig(cfg *config.BackendNamespace) (*backend.BackendConfig, error) {
 	selectorType, valid := backend.SelectorNameToType(cfg.SelectorType)
 	if !valid {
@@ -95,6 +117,7 @@ func DefaultAsyncCloseNamespace(ns Namespace) error {
 	}
 	go func() {
 		time.Sleep(30 * time.Second)
+		//nsWrapper.BreakerHolder.CloseBreaker()
 		nsWrapper.Backend.Close()
 	}()
 	return nil

@@ -92,6 +92,10 @@ func (n *NamespaceWrapper) Closed() bool {
 	return !ok
 }
 
+func (n *NamespaceWrapper) GetBreaker() (driver.Breaker, error) {
+	return n.mustGetCurrentNamespace().GetBreaker()
+}
+
 func (n *NamespaceWrapper) mustGetCurrentNamespace() Namespace {
 	ns, ok := n.nsmgr.getCurrentNamespaces().Get(n.name)
 	if !ok {

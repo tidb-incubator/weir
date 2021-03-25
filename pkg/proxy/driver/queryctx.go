@@ -2,13 +2,19 @@ package driver
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
+	"strings"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 	"github.com/pingcap/parser"
+	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/auth"
+	"github.com/pingcap/parser/format"
 	"github.com/pingcap/tidb/sessionctx/variable"
+	driver "github.com/pingcap/tidb/types/parser_driver"
 	"github.com/pingcap/tidb/util"
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
@@ -36,7 +42,10 @@ type QueryCtxImpl struct {
 	parser      *parser.Parser
 	sessionVars *SessionVarsWrapper
 
-	connMgr *BackendConnManager
+	connMgr            *BackendConnManager
+	firstTableName     string
+	currentSqlParadigm uint32
+	useBreaker         bool
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
@@ -97,8 +106,36 @@ func (q *QueryCtxImpl) CurrentDB() string {
 	return q.currentDB
 }
 
-func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result, error) {
-	return q.execute(ctx, sql)
+func (q *QueryCtxImpl) Execute(ctx context.Context, sql string, connectionID uint32) (*gomysql.Result, error) {
+	defer q.reset()
+	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
+	stmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
+	if err != nil {
+		return nil, err
+	}
+
+	if GetIsCURDStmtType(stmt) {
+		featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
+		if err != nil {
+			return nil, err
+		}
+		visitor, err := extractAstVisit(featureStmt)
+		if err != nil {
+			return nil, err
+		}
+
+		q.useBreaker = true
+		q.firstTableName = visitor.TableName()
+		q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
+	}
+
+	return q.execute(ctx, stmt, sql, connectionID)
+}
+
+func (q *QueryCtxImpl) reset() {
+	q.firstTableName = ""
+	q.useBreaker = false
+	q.currentSqlParadigm = 0
 }
 
 // TODO(eastfisher): remove this function when Driver interface is changed
@@ -191,4 +228,82 @@ func (*QueryCtxImpl) SetSessionManager(util.SessionManager) {
 func (q *QueryCtxImpl) initAttachedConnHolder() {
 	connMgr := NewBackendConnManager(getGlobalFSM(), q.ns)
 	q.connMgr = connMgr
+}
+
+func GetIsCURDStmtType(stmt ast.StmtNode) bool {
+	switch stmt.(type) {
+	case *ast.SelectStmt:
+		return true
+	case *ast.InsertStmt:
+		return true
+	case *ast.UpdateStmt:
+		return true
+	case *ast.DeleteStmt:
+		return true
+	default:
+		return false
+	}
+}
+
+type AstVisitor struct {
+	table      string
+	sqlFeature string
+	found      bool
+}
+
+func (f *AstVisitor) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
+	switch nn := n.(type) {
+	case *ast.TableName:
+		if f.found {
+			return n, false
+		}
+		f.table = nn.Name.String()
+		f.found = true
+	case *ast.PatternInExpr:
+		if len(nn.List) == 0 {
+			return nn, false
+		}
+		if _, ok := nn.List[0].(*driver.ValueExpr); ok {
+			nn.List = nn.List[:1]
+		}
+	case *driver.ValueExpr:
+		nn.SetValue("?")
+	}
+	return n, false
+}
+
+func (f *AstVisitor) Leave(n ast.Node) (node ast.Node, ok bool) {
+	return n, !f.found
+}
+
+func (f *AstVisitor) TableName() string {
+	return f.table
+}
+
+func (f *AstVisitor) SqlFeature() string {
+	return f.sqlFeature
+}
+
+func extractAstVisit(stmt ast.StmtNode) (*AstVisitor, error) {
+	visitor := &AstVisitor{}
+
+	stmt.Accept(visitor)
+
+	sb := strings.Builder{}
+	if err := stmt.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb)); err != nil {
+		return nil, err
+	}
+	visitor.sqlFeature = sb.String()
+
+	return visitor, nil
+}
+
+func UInt322Bytes(n uint32) []byte {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, n)
+	return b
+}
+
+func Bytes2Uint32(b []byte) uint32 {
+	return binary.LittleEndian.Uint32(b)
 }

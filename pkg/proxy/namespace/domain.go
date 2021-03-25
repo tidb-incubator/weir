@@ -2,7 +2,6 @@ package namespace
 
 import (
 	"context"
-
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 )
 
@@ -13,6 +12,7 @@ type Namespace interface {
 	ListDatabases() []string
 	GetPooledConn(context.Context) (driver.PooledBackendConn, error)
 	Close()
+	GetBreaker() (driver.Breaker, error)
 }
 
 type Frontend interface {

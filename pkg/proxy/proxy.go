@@ -42,20 +42,17 @@ func (p *Proxy) Init() error {
 	if err != nil {
 		return err
 	}
-
 	nsmgr, err := namespace.CreateNamespaceManager(nss, namespace.BuildNamespace, namespace.DefaultAsyncCloseNamespace)
 	if err != nil {
 		return err
 	}
 	p.nsmgr = nsmgr
-
 	driverImpl := driver.NewDriverImpl(nsmgr)
 	svr, err := server.NewServer(p.cfg, driverImpl)
 	if err != nil {
 		return err
 	}
 	p.svr = svr
-
 	apiServer, err := CreateHttpApiServer(svr, nsmgr, cc, p.cfg)
 	if err != nil {
 		return err
