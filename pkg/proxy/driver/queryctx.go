@@ -117,8 +117,11 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return nil, err
 	}
 
+	tableName := extractFirstTableNameFromStmt(stmt)
+	ctx = CtxWithAstTableName(ctx, tableName)
+
 	if q.isStmtDenied(ctx, sql, stmt) {
-		q.recordDeniedQueryMetrics(stmt)
+		q.recordDeniedQueryMetrics(ctx, stmt)
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
 	}
 
@@ -185,7 +188,7 @@ func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNo
 		breaker.Hit(brName, -1, false)
 	}
 	durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
-	q.recordQueryMetrics(stmtNode, err, durationMilliSecond)
+	q.recordQueryMetrics(ctx, stmtNode, err, durationMilliSecond)
 	return ret, err
 }
 
