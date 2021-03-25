@@ -48,7 +48,6 @@ type QueryCtxImpl struct {
 	connMgr            *BackendConnManager
 	firstTableName     string
 	currentSqlParadigm uint32
-	useBreaker         bool
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager, connId uint64) *QueryCtxImpl {
@@ -123,22 +122,18 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
 	}
 
+	if !isStmtNeedToCheckCircuitBreaking(stmt) {
+		return q.executeStmt(ctx, sql, stmt)
+	}
+
 	if err = q.preHandleBreaker(ctx, sql, stmt); err != nil {
 		return nil, err
 	}
 
-	if q.useBreaker {
-		return q.executeWithBreakerInterceptor(ctx, stmt, sql, q.connId)
-	} else {
-		return q.executeStmt(ctx, sql, stmt)
-	}
+	return q.executeWithBreakerInterceptor(ctx, stmt, sql, q.connId)
 }
 
 func (q *QueryCtxImpl) preHandleBreaker(ctx context.Context, sql string, stmt ast.StmtNode) error {
-	if !isStmtNeedToCheckCircuitBreaking(stmt) {
-		return nil
-	}
-
 	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
 	featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
 	if err != nil {
@@ -150,7 +145,6 @@ func (q *QueryCtxImpl) preHandleBreaker(ctx context.Context, sql string, stmt as
 		return err
 	}
 
-	q.useBreaker = true
 	q.firstTableName = visitor.TableName()
 	q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
 	return nil
@@ -197,7 +191,6 @@ func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNo
 
 func (q *QueryCtxImpl) reset() {
 	q.firstTableName = ""
-	q.useBreaker = false
 	q.currentSqlParadigm = 0
 }
 
