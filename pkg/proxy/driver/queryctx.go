@@ -118,13 +118,13 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return nil, err
 	}
 
-	if err = q.preHandleBreaker(ctx, sql, stmt); err != nil {
-		return nil, err
-	}
-
 	if q.isStmtDenied(ctx, sql, stmt) {
 		q.recordDeniedQueryMetrics(stmt)
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
+	}
+
+	if err = q.preHandleBreaker(ctx, sql, stmt); err != nil {
+		return nil, err
 	}
 
 	if q.useBreaker {
