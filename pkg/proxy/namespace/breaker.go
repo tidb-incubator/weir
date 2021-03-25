@@ -206,7 +206,7 @@ func (this *BreakerManger) CASHalfOpenProbeSent(name string, idx int, halfOpenPr
 	return true
 }
 
-func (this *BreakerManger) AddTimeWheelTask(name string, connectionID uint32, flag *int32) error {
+func (this *BreakerManger) AddTimeWheelTask(name string, connectionID uint64, flag *int32) error {
 	for idx, strategy := range this.strategies {
 		hitNum := idx
 		if err := this.tw.Add(strategy.sqlTimeoutMsDuration, uint64(connectionID)*this.hashFactor+uint64(hitNum), func() {
@@ -219,7 +219,7 @@ func (this *BreakerManger) AddTimeWheelTask(name string, connectionID uint32, fl
 	return nil
 }
 
-func (this *BreakerManger) RemoveTimeWheelTask(connectionID uint32) error {
+func (this *BreakerManger) RemoveTimeWheelTask(connectionID uint64) error {
 	for idx := range this.strategies {
 		if err := this.tw.Remove(uint64(connectionID)*this.hashFactor + uint64(idx)); err != nil {
 			return err

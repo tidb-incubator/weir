@@ -2,64 +2,16 @@ package driver
 
 import (
 	"context"
+	"hash/crc32"
 	"strings"
-	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
-	cb "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker/circuit_breaker"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
-
-func (q *QueryCtxImpl) execute(ctx context.Context, stmtNode ast.StmtNode, sql string, connectionID uint32) (*gomysql.Result, error) {
-	if q.isStmtDenied(ctx, sql, stmtNode) {
-		q.recordDeniedQueryMetrics(stmtNode)
-		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
-	}
-
-	if q.useBreaker {
-		startTime := time.Now()
-
-		breaker, err := q.ns.GetBreaker()
-		if err != nil {
-			return nil, err
-		}
-
-		brName, err := q.getBreakerName(ctx, sql, breaker)
-		if err != nil {
-			return nil, err
-		}
-
-		status, brNum := breaker.Status(brName)
-		if status == cb.CircuitBreakerStatusOpen {
-			return nil, cb.ErrCircuitBreak
-		}
-
-		if status == cb.CircuitBreakerStatusHalfOpen {
-			if !breaker.CASHalfOpenProbeSent(brName, brNum, true) {
-				return nil, cb.ErrCircuitBreak
-			}
-		}
-
-		var triggerFlag int32 = -1
-		if err := breaker.AddTimeWheelTask(brName, connectionID, &triggerFlag); err != nil {
-			return nil, err
-		}
-		ret, err := q.executeStmt(ctx, sql, stmtNode)
-		breaker.RemoveTimeWheelTask(connectionID)
-
-		if triggerFlag == -1 {
-			breaker.Hit(brName, -1, false)
-		}
-		durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
-		q.recordQueryMetrics(stmtNode, err, durationMilliSecond)
-		return ret, err
-	}
-	return q.executeStmt(ctx, sql, stmtNode)
-}
 
 // TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sql string, stmtNode ast.StmtNode) bool {
@@ -77,12 +29,31 @@ func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker B
 	case "db":
 		return q.currentDB, nil
 	case "table":
-		return q.firstTableName, nil
+		firstTableName, _ := GetAstTableNameFromCtx(ctx)
+		return firstTableName, nil
 	case "sql":
-		return string(UInt322Bytes(q.currentSqlParadigm)), nil
+		sqlParadigm, err := q.extractSqlParadigm(ctx, sql)
+		if err != nil {
+			return "", err
+		}
+		sqlDigest := crc32.ChecksumIEEE([]byte(sqlParadigm))
+		return string(UInt322Bytes(sqlDigest)), nil
 	default:
 		return "", errors.New("breaker_name err")
 	}
+}
+
+func (q *QueryCtxImpl) extractSqlParadigm(ctx context.Context, sql string) (string, error) {
+	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
+	featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
+	if err != nil {
+		return "", err
+	}
+	visitor, err := ExtractAstVisit(featureStmt)
+	if err != nil {
+		return "", err
+	}
+	return visitor.SqlFeature(), nil
 }
 
 func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {

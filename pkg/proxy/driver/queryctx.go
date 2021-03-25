@@ -2,19 +2,16 @@ package driver
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
-	"hash/crc32"
-	"strings"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	cb "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker/circuit_breaker"
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/auth"
-	"github.com/pingcap/parser/format"
+	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
-	driver "github.com/pingcap/tidb/types/parser_driver"
 	"github.com/pingcap/tidb/util"
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
@@ -36,6 +33,7 @@ const (
 )
 
 type QueryCtxImpl struct {
+	connId      uint64
 	nsmgr       NamespaceManager
 	ns          Namespace
 	currentDB   string
@@ -43,13 +41,11 @@ type QueryCtxImpl struct {
 	sessionVars *SessionVarsWrapper
 
 	connMgr            *BackendConnManager
-	firstTableName     string
-	currentSqlParadigm uint32
-	useBreaker         bool
 }
 
-func NewQueryCtxImpl(nsmgr NamespaceManager) *QueryCtxImpl {
+func NewQueryCtxImpl(nsmgr NamespaceManager, connId uint64) *QueryCtxImpl {
 	return &QueryCtxImpl{
+		connId:      connId,
 		nsmgr:       nsmgr,
 		parser:      parser.New(),
 		sessionVars: NewSessionVarsWrapper(variable.NewSessionVars()),
@@ -106,36 +102,68 @@ func (q *QueryCtxImpl) CurrentDB() string {
 	return q.currentDB
 }
 
-func (q *QueryCtxImpl) Execute(ctx context.Context, sql string, connectionID uint32) (*gomysql.Result, error) {
-	defer q.reset()
+func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result, error) {
 	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
 	stmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
 	if err != nil {
 		return nil, err
 	}
 
-	if GetIsCURDStmtType(stmt) {
-		featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
-		if err != nil {
-			return nil, err
-		}
-		visitor, err := extractAstVisit(featureStmt)
-		if err != nil {
-			return nil, err
-		}
+	tableName := extractFirstTableNameFromStmt(stmt)
+	ctx = CtxWithAstTableName(ctx, tableName)
 
-		q.useBreaker = true
-		q.firstTableName = visitor.TableName()
-		q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
+	if q.isStmtDenied(ctx, sql, stmt) {
+		q.recordDeniedQueryMetrics(ctx, stmt)
+		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
 	}
 
-	return q.execute(ctx, stmt, sql, connectionID)
+	if !isStmtNeedToCheckCircuitBreaking(stmt) {
+		return q.executeStmt(ctx, sql, stmt)
+	}
+
+	return q.executeWithBreakerInterceptor(ctx, stmt, sql)
 }
 
-func (q *QueryCtxImpl) reset() {
-	q.firstTableName = ""
-	q.useBreaker = false
-	q.currentSqlParadigm = 0
+func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNode ast.StmtNode, sql string) (*gomysql.Result, error) {
+	startTime := time.Now()
+
+	breaker, err := q.ns.GetBreaker()
+	if err != nil {
+		return nil, err
+	}
+
+	brName, err := q.getBreakerName(ctx, sql, breaker)
+	if err != nil {
+		return nil, err
+	}
+
+	status, brNum := breaker.Status(brName)
+	if status == cb.CircuitBreakerStatusOpen {
+		return nil, cb.ErrCircuitBreak
+	}
+
+	if status == cb.CircuitBreakerStatusHalfOpen {
+		if !breaker.CASHalfOpenProbeSent(brName, brNum, true) {
+			return nil, cb.ErrCircuitBreak
+		}
+	}
+
+	var triggerFlag int32 = -1
+	connId := q.connId
+	if err := breaker.AddTimeWheelTask(brName, connId, &triggerFlag); err != nil {
+		return nil, err
+	}
+	ret, err := q.executeStmt(ctx, sql, stmtNode)
+	// TODO: handle err
+	breaker.RemoveTimeWheelTask(connId)
+
+	if triggerFlag == -1 {
+		// TODO: handle err
+		breaker.Hit(brName, -1, false)
+	}
+	durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
+	q.recordQueryMetrics(ctx, stmtNode, err, durationMilliSecond)
+	return ret, err
 }
 
 // TODO(eastfisher): remove this function when Driver interface is changed
@@ -230,7 +258,7 @@ func (q *QueryCtxImpl) initAttachedConnHolder() {
 	q.connMgr = connMgr
 }
 
-func GetIsCURDStmtType(stmt ast.StmtNode) bool {
+func isStmtNeedToCheckCircuitBreaking(stmt ast.StmtNode) bool {
 	switch stmt.(type) {
 	case *ast.SelectStmt:
 		return true
@@ -245,65 +273,3 @@ func GetIsCURDStmtType(stmt ast.StmtNode) bool {
 	}
 }
 
-type AstVisitor struct {
-	table      string
-	sqlFeature string
-	found      bool
-}
-
-func (f *AstVisitor) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
-	switch nn := n.(type) {
-	case *ast.TableName:
-		if f.found {
-			return n, false
-		}
-		f.table = nn.Name.String()
-		f.found = true
-	case *ast.PatternInExpr:
-		if len(nn.List) == 0 {
-			return nn, false
-		}
-		if _, ok := nn.List[0].(*driver.ValueExpr); ok {
-			nn.List = nn.List[:1]
-		}
-	case *driver.ValueExpr:
-		nn.SetValue("?")
-	}
-	return n, false
-}
-
-func (f *AstVisitor) Leave(n ast.Node) (node ast.Node, ok bool) {
-	return n, !f.found
-}
-
-func (f *AstVisitor) TableName() string {
-	return f.table
-}
-
-func (f *AstVisitor) SqlFeature() string {
-	return f.sqlFeature
-}
-
-func extractAstVisit(stmt ast.StmtNode) (*AstVisitor, error) {
-	visitor := &AstVisitor{}
-
-	stmt.Accept(visitor)
-
-	sb := strings.Builder{}
-	if err := stmt.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb)); err != nil {
-		return nil, err
-	}
-	visitor.sqlFeature = sb.String()
-
-	return visitor, nil
-}
-
-func UInt322Bytes(n uint32) []byte {
-	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, n)
-	return b
-}
-
-func Bytes2Uint32(b []byte) uint32 {
-	return binary.LittleEndian.Uint32(b)
-}
