@@ -3,10 +3,8 @@ package driver
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
-	cb "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker/circuit_breaker"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
@@ -15,49 +13,6 @@ import (
 )
 
 func (q *QueryCtxImpl) execute(ctx context.Context, stmtNode ast.StmtNode, sql string, connectionID uint64) (*gomysql.Result, error) {
-	if q.isStmtDenied(ctx, sql, stmtNode) {
-		q.recordDeniedQueryMetrics(stmtNode)
-		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
-	}
-
-	if q.useBreaker {
-		startTime := time.Now()
-
-		breaker, err := q.ns.GetBreaker()
-		if err != nil {
-			return nil, err
-		}
-
-		brName, err := q.getBreakerName(ctx, sql, breaker)
-		if err != nil {
-			return nil, err
-		}
-
-		status, brNum := breaker.Status(brName)
-		if status == cb.CircuitBreakerStatusOpen {
-			return nil, cb.ErrCircuitBreak
-		}
-
-		if status == cb.CircuitBreakerStatusHalfOpen {
-			if !breaker.CASHalfOpenProbeSent(brName, brNum, true) {
-				return nil, cb.ErrCircuitBreak
-			}
-		}
-
-		var triggerFlag int32 = -1
-		if err := breaker.AddTimeWheelTask(brName, connectionID, &triggerFlag); err != nil {
-			return nil, err
-		}
-		ret, err := q.executeStmt(ctx, sql, stmtNode)
-		breaker.RemoveTimeWheelTask(connectionID)
-
-		if triggerFlag == -1 {
-			breaker.Hit(brName, -1, false)
-		}
-		durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
-		q.recordQueryMetrics(stmtNode, err, durationMilliSecond)
-		return ret, err
-	}
 	return q.executeStmt(ctx, sql, stmtNode)
 }
 

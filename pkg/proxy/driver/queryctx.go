@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	cb "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker/circuit_breaker"
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/auth"
 	"github.com/pingcap/parser/format"
+	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	driver "github.com/pingcap/tidb/types/parser_driver"
 	"github.com/pingcap/tidb/util"
@@ -116,22 +118,81 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return nil, err
 	}
 
-	if isStmtNeedToCheckCircuitBreaking(stmt) {
-		featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
-		if err != nil {
-			return nil, err
-		}
-		visitor, err := extractAstVisit(featureStmt)
-		if err != nil {
-			return nil, err
-		}
-
-		q.useBreaker = true
-		q.firstTableName = visitor.TableName()
-		q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
+	if err = q.preHandleBreaker(ctx, sql, stmt); err != nil {
+		return nil, err
 	}
 
-	return q.execute(ctx, stmt, sql, q.connId)
+	if q.isStmtDenied(ctx, sql, stmt) {
+		q.recordDeniedQueryMetrics(stmt)
+		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
+	}
+
+	if q.useBreaker {
+		return q.executeWithBreakerInterceptor(ctx, stmt, sql, q.connId)
+	} else {
+		return q.executeStmt(ctx, sql, stmt)
+	}
+}
+
+func (q *QueryCtxImpl) preHandleBreaker(ctx context.Context, sql string, stmt ast.StmtNode) error {
+	if !isStmtNeedToCheckCircuitBreaking(stmt) {
+		return nil
+	}
+
+	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
+	featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
+	if err != nil {
+		return err
+	}
+
+	visitor, err := extractAstVisit(featureStmt)
+	if err != nil {
+		return err
+	}
+
+	q.useBreaker = true
+	q.firstTableName = visitor.TableName()
+	q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
+	return nil
+}
+
+func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNode ast.StmtNode, sql string, connectionID uint64) (*gomysql.Result, error) {
+	startTime := time.Now()
+
+	breaker, err := q.ns.GetBreaker()
+	if err != nil {
+		return nil, err
+	}
+
+	brName, err := q.getBreakerName(ctx, sql, breaker)
+	if err != nil {
+		return nil, err
+	}
+
+	status, brNum := breaker.Status(brName)
+	if status == cb.CircuitBreakerStatusOpen {
+		return nil, cb.ErrCircuitBreak
+	}
+
+	if status == cb.CircuitBreakerStatusHalfOpen {
+		if !breaker.CASHalfOpenProbeSent(brName, brNum, true) {
+			return nil, cb.ErrCircuitBreak
+		}
+	}
+
+	var triggerFlag int32 = -1
+	if err := breaker.AddTimeWheelTask(brName, connectionID, &triggerFlag); err != nil {
+		return nil, err
+	}
+	ret, err := q.executeStmt(ctx, sql, stmtNode)
+	breaker.RemoveTimeWheelTask(connectionID)
+
+	if triggerFlag == -1 {
+		breaker.Hit(brName, -1, false)
+	}
+	durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
+	q.recordQueryMetrics(stmtNode, err, durationMilliSecond)
+	return ret, err
 }
 
 func (q *QueryCtxImpl) reset() {
