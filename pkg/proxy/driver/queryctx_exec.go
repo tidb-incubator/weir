@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"hash/crc32"
 	"strings"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
@@ -35,10 +36,28 @@ func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker B
 		firstTableName, _ := GetAstTableNameFromCtx(ctx)
 		return firstTableName, nil
 	case "sql":
-		return string(UInt322Bytes(q.currentSqlParadigm)), nil
+		sqlParadigm, err := q.extractSqlParadigm(ctx, sql)
+		if err != nil {
+			return "", err
+		}
+		sqlDigest := crc32.ChecksumIEEE([]byte(sqlParadigm))
+		return string(UInt322Bytes(sqlDigest)), nil
 	default:
 		return "", errors.New("breaker_name err")
 	}
+}
+
+func (q *QueryCtxImpl) extractSqlParadigm(ctx context.Context, sql string) (string, error) {
+	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
+	featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
+	if err != nil {
+		return "", err
+	}
+	visitor, err := ExtractAstVisit(featureStmt)
+	if err != nil {
+		return "", err
+	}
+	return visitor.SqlFeature(), nil
 }
 
 func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {

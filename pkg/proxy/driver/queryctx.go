@@ -3,7 +3,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"hash/crc32"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
@@ -42,7 +41,6 @@ type QueryCtxImpl struct {
 	sessionVars *SessionVarsWrapper
 
 	connMgr            *BackendConnManager
-	currentSqlParadigm uint32
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager, connId uint64) *QueryCtxImpl {
@@ -105,7 +103,6 @@ func (q *QueryCtxImpl) CurrentDB() string {
 }
 
 func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result, error) {
-	defer q.reset()
 	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
 	stmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
 	if err != nil {
@@ -124,27 +121,7 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return q.executeStmt(ctx, sql, stmt)
 	}
 
-	if err = q.preHandleBreaker(ctx, sql, stmt); err != nil {
-		return nil, err
-	}
-
 	return q.executeWithBreakerInterceptor(ctx, stmt, sql, q.connId)
-}
-
-func (q *QueryCtxImpl) preHandleBreaker(ctx context.Context, sql string, stmt ast.StmtNode) error {
-	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
-	featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
-	if err != nil {
-		return err
-	}
-
-	visitor, err := ExtractAstVisit(featureStmt)
-	if err != nil {
-		return err
-	}
-
-	q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
-	return nil
 }
 
 func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNode ast.StmtNode, sql string, connectionID uint64) (*gomysql.Result, error) {
@@ -184,10 +161,6 @@ func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNo
 	durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
 	q.recordQueryMetrics(ctx, stmtNode, err, durationMilliSecond)
 	return ret, err
-}
-
-func (q *QueryCtxImpl) reset() {
-	q.currentSqlParadigm = 0
 }
 
 // TODO(eastfisher): remove this function when Driver interface is changed
