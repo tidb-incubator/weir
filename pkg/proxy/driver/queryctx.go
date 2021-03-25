@@ -121,10 +121,10 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return q.executeStmt(ctx, sql, stmt)
 	}
 
-	return q.executeWithBreakerInterceptor(ctx, stmt, sql, q.connId)
+	return q.executeWithBreakerInterceptor(ctx, stmt, sql)
 }
 
-func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNode ast.StmtNode, sql string, connectionID uint64) (*gomysql.Result, error) {
+func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNode ast.StmtNode, sql string) (*gomysql.Result, error) {
 	startTime := time.Now()
 
 	breaker, err := q.ns.GetBreaker()
@@ -149,12 +149,13 @@ func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNo
 	}
 
 	var triggerFlag int32 = -1
-	if err := breaker.AddTimeWheelTask(brName, connectionID, &triggerFlag); err != nil {
+	connId := q.connId
+	if err := breaker.AddTimeWheelTask(brName, connId, &triggerFlag); err != nil {
 		return nil, err
 	}
 	ret, err := q.executeStmt(ctx, sql, stmtNode)
 	// TODO: handle err
-	breaker.RemoveTimeWheelTask(connectionID)
+	breaker.RemoveTimeWheelTask(connId)
 
 	if triggerFlag == -1 {
 		// TODO: handle err
