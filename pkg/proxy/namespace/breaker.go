@@ -2,7 +2,6 @@ package namespace
 
 import (
 	"errors"
-	"fmt"
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	rb "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker"
@@ -208,11 +207,9 @@ func (this *BreakerManger) CASHalfOpenProbeSent(name string, idx int, halfOpenPr
 }
 
 func (this *BreakerManger) AddTimeWheelTask(name string, connectionID uint32, flag *int32) error {
-	fmt.Println("ok?")
 	for idx, strategy := range this.strategies {
 		hitNum := idx
 		if err := this.tw.Add(strategy.sqlTimeoutMsDuration, uint64(connectionID)*this.hashFactor+uint64(hitNum), func() {
-			fmt.Println("timeout ok!!!!!!!")
 			atomic.AddInt32(flag, 1)
 			this.Hit(name, hitNum, true)
 		}); err != nil {

@@ -25,7 +25,3 @@ type Backend interface {
 	Close()
 	GetPooledConn(context.Context) (driver.PooledBackendConn, error)
 }
-
-type BreakerHolder interface {
-	GetBreaker() (driver.Breaker, error)
-}
