@@ -32,7 +32,8 @@ func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker B
 	case "db":
 		return q.currentDB, nil
 	case "table":
-		return q.firstTableName, nil
+		firstTableName, _ := GetAstTableNameFromCtx(ctx)
+		return firstTableName, nil
 	case "sql":
 		return string(UInt322Bytes(q.currentSqlParadigm)), nil
 	default:

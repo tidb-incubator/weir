@@ -42,7 +42,6 @@ type QueryCtxImpl struct {
 	sessionVars *SessionVarsWrapper
 
 	connMgr            *BackendConnManager
-	firstTableName     string
 	currentSqlParadigm uint32
 }
 
@@ -144,7 +143,6 @@ func (q *QueryCtxImpl) preHandleBreaker(ctx context.Context, sql string, stmt as
 		return err
 	}
 
-	q.firstTableName, _ = GetAstTableNameFromCtx(ctx)
 	q.currentSqlParadigm = crc32.ChecksumIEEE([]byte(visitor.SqlFeature()))
 	return nil
 }
@@ -189,7 +187,6 @@ func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNo
 }
 
 func (q *QueryCtxImpl) reset() {
-	q.firstTableName = ""
 	q.currentSqlParadigm = 0
 }
 
