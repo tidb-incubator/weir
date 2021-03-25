@@ -153,9 +153,11 @@ func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNo
 		return nil, err
 	}
 	ret, err := q.executeStmt(ctx, sql, stmtNode)
+	// TODO: handle err
 	breaker.RemoveTimeWheelTask(connectionID)
 
 	if triggerFlag == -1 {
+		// TODO: handle err
 		breaker.Hit(brName, -1, false)
 	}
 	durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
