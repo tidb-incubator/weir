@@ -114,7 +114,7 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string, connectionID uin
 		return nil, err
 	}
 
-	if GetIsCURDStmtType(stmt) {
+	if isStmtNeedToCheckCircuitBreaking(stmt) {
 		featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
 		if err != nil {
 			return nil, err
@@ -230,7 +230,7 @@ func (q *QueryCtxImpl) initAttachedConnHolder() {
 	q.connMgr = connMgr
 }
 
-func GetIsCURDStmtType(stmt ast.StmtNode) bool {
+func isStmtNeedToCheckCircuitBreaking(stmt ast.StmtNode) bool {
 	switch stmt.(type) {
 	case *ast.SelectStmt:
 		return true
