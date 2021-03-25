@@ -13,7 +13,7 @@ import (
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
 
-func (q *QueryCtxImpl) execute(ctx context.Context, stmtNode ast.StmtNode, sql string, connectionID uint64) (*gomysql.Result, error) {
+func (q *QueryCtxImpl) execute(ctx context.Context, stmtNode ast.StmtNode, sql string) (*gomysql.Result, error) {
 	return q.executeStmt(ctx, sql, stmtNode)
 }
 
