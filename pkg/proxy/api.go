@@ -17,6 +17,7 @@ import (
 
 const (
 	ParamNamespace = "namespace"
+	ParamBreaker   = "breaker"
 )
 
 type HttpApiServer struct {
@@ -159,7 +160,6 @@ func (n *NamespaceHttpHandler) HandlePrepareReload(c *gin.Context) {
 		c.JSON(http.StatusOK, CreateJsonResp(http.StatusInternalServerError, errMsg))
 		return
 	}
-
 	if err := n.nsmgr.PrepareReloadNamespace(ns, nscfg); err != nil {
 		errMsg := "prepare reload namespace error"
 		logutil.BgLogger().Error(errMsg, zap.Error(err), zap.String("namespace", ns))

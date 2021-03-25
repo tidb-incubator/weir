@@ -129,7 +129,7 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 func (cc *clientConn) useDB(ctx context.Context, db string) (err error) {
 	// if input is "use `SELECT`", mysql client just send "SELECT"
 	// so we add `` around db.
-	_, err = cc.ctx.Execute(ctx, "use `"+db+"`")
+	_, err = cc.ctx.Execute(ctx, "use `"+db+"`", cc.connectionID)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (cc *clientConn) useDB(ctx context.Context, db string) (err error) {
 // There is a special query `load data` that does not return result, which is handled differently.
 // Query `load stats` does not return result either.
 func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
-	rss, err := cc.ctx.Execute(ctx, sql)
+	rss, err := cc.ctx.Execute(ctx, sql, cc.connectionID)
 	if err != nil {
 		metrics.ExecuteErrorCounter.WithLabelValues(metrics.ExecuteErrorToLabel(err)).Inc()
 		return err

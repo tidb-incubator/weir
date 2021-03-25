@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-
 	"github.com/siddontang/go-mysql/mysql"
 )
 
@@ -17,6 +16,17 @@ type Namespace interface {
 	GetPooledConn(context.Context) (PooledBackendConn, error)
 	IncrConnCount()
 	DescConnCount()
+	GetBreaker() (Breaker, error)
+}
+
+type Breaker interface {
+	GetBreakerScope() string
+	Hit(name string, idx int, isFail bool) error
+	Status(name string) (int32, int)
+	AddTimeWheelTask(name string, connectionID uint32, flag *int32) error
+	RemoveTimeWheelTask(connectionID uint32) error
+	CASHalfOpenProbeSent(name string, idx int, halfOpenProbeSent bool) bool
+	CloseBreaker()
 }
 
 type PooledBackendConn interface {

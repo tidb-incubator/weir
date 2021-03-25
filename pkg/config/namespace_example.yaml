@@ -1,15 +1,11 @@
 version: "v1"
-cluster: "test_cluster"
 namespace: "test_namespace"
 frontend:
   allowed_dbs:
-    - "testdb0"
-    - "testdb1"
+    - "test_weir_db"
   slow_sql_time: 50
   denied_sqls:
-    - "SELECT * FROM tb1"
   denied_ips:
-    - "10.10.0.1"
   idle_timeout: 3600
   users:
     - username: "hello"
@@ -19,10 +15,18 @@ frontend:
 backend:
   instances:
     - "127.0.0.1:4000"
-    - "127.0.0.1:4001"
-    - "127.0.0.1:4002"
   username: "root"
-  password: "123456"
+  password: ""
   selector_type: "random"
-  pool_size: 2
+  pool_size: 10
   idle_timeout: 60
+breaker:
+  scope: "sql"
+  strategies:
+    - min_qps: 3
+      failure_ratethreshold: 0
+      failure_num: 5
+      sql_timeoutMs: 2000
+      open_status_durationMs: 5000
+      size: 10
+      cellIntervalMs: 1000

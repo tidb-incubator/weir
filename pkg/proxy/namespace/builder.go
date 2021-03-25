@@ -13,6 +13,7 @@ type NamespaceImpl struct {
 	name string
 	Backend
 	Frontend
+	BreakerHolder
 }
 
 func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
@@ -24,11 +25,15 @@ func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "build frontend error")
 	}
-
+	brm, err := BuildBreaker(&cfg.Breaker)
+	if err != nil {
+		return nil, errors.WithMessage(err, "build breaker error")
+	}
 	wrapper := &NamespaceImpl{
-		name:     cfg.Namespace,
-		Backend:  be,
-		Frontend: fe,
+		name:          cfg.Namespace,
+		Backend:       be,
+		Frontend:      fe,
+		BreakerHolder: brm,
 	}
 	return wrapper, nil
 }
@@ -66,6 +71,14 @@ func BuildFrontend(cfg *config.FrontendNamespace) (Frontend, error) {
 	return fns, nil
 }
 
+func BuildBreaker(br *config.BreakerInfo) (BreakerHolder, error) {
+	breaker, err := NewBreaker(br)
+	if err != nil {
+		return nil, err
+	}
+	return breaker, nil
+}
+
 func parseBackendConfig(cfg *config.BackendNamespace) (*backend.BackendConfig, error) {
 	selectorType, valid := backend.SelectorNameToType(cfg.SelectorType)
 	if !valid {
@@ -95,6 +108,7 @@ func DefaultAsyncCloseNamespace(ns Namespace) error {
 	}
 	go func() {
 		time.Sleep(30 * time.Second)
+		//nsWrapper.BreakerHolder.CloseBreaker()
 		nsWrapper.Backend.Close()
 	}()
 	return nil
