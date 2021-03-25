@@ -178,7 +178,7 @@ func (f *BackendConnManager) setAttachedConn(conn PooledBackendConn) {
 
 func (f *BackendConnManager) unsetAttachedConn() {
 	f.txnConn = nil
-	metrics.QueryCtxAttachedConnGauge.WithLabelValues(f.ns.Name()).Desc()
+	metrics.QueryCtxAttachedConnGauge.WithLabelValues(f.ns.Name()).Dec()
 }
 
 func errClosePooledBackendConn(conn PooledBackendConn, ns string) {
