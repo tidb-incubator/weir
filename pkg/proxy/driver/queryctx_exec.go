@@ -13,10 +13,6 @@ import (
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
 
-func (q *QueryCtxImpl) execute(ctx context.Context, stmtNode ast.StmtNode, sql string) (*gomysql.Result, error) {
-	return q.executeStmt(ctx, sql, stmtNode)
-}
-
 // TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sql string, stmtNode ast.StmtNode) bool {
 	//todo解析sql
