@@ -2,10 +2,8 @@ package driver
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"hash/crc32"
-	"strings"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
@@ -13,10 +11,8 @@ import (
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/auth"
-	"github.com/pingcap/parser/format"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
-	driver "github.com/pingcap/tidb/types/parser_driver"
 	"github.com/pingcap/tidb/util"
 	gomysql "github.com/siddontang/go-mysql/mysql"
 )
@@ -143,7 +139,7 @@ func (q *QueryCtxImpl) preHandleBreaker(ctx context.Context, sql string, stmt as
 		return err
 	}
 
-	visitor, err := extractAstVisit(featureStmt)
+	visitor, err := ExtractAstVisit(featureStmt)
 	if err != nil {
 		return err
 	}
@@ -304,53 +300,3 @@ func isStmtNeedToCheckCircuitBreaking(stmt ast.StmtNode) bool {
 	}
 }
 
-type AstVisitor struct {
-	sqlFeature string
-}
-
-func (f *AstVisitor) Enter(n ast.Node) (node ast.Node, skipChildren bool) {
-	switch nn := n.(type) {
-	case *ast.PatternInExpr:
-		if len(nn.List) == 0 {
-			return nn, false
-		}
-		if _, ok := nn.List[0].(*driver.ValueExpr); ok {
-			nn.List = nn.List[:1]
-		}
-	case *driver.ValueExpr:
-		nn.SetValue("?")
-	}
-	return n, false
-}
-
-func (f *AstVisitor) Leave(n ast.Node) (node ast.Node, ok bool) {
-	return n, true
-}
-
-func (f *AstVisitor) SqlFeature() string {
-	return f.sqlFeature
-}
-
-func extractAstVisit(stmt ast.StmtNode) (*AstVisitor, error) {
-	visitor := &AstVisitor{}
-
-	stmt.Accept(visitor)
-
-	sb := strings.Builder{}
-	if err := stmt.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb)); err != nil {
-		return nil, err
-	}
-	visitor.sqlFeature = sb.String()
-
-	return visitor, nil
-}
-
-func UInt322Bytes(n uint32) []byte {
-	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, n)
-	return b
-}
-
-func Bytes2Uint32(b []byte) uint32 {
-	return binary.LittleEndian.Uint32(b)
-}
