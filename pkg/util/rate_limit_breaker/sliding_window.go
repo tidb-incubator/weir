@@ -1,6 +1,8 @@
 package rate_limit_breaker
 
-import "time"
+import (
+	"time"
+)
 
 /*
  * 一个 SlidingWindow 由若干个子单元(Cell)组成，数量(Size)在创建 SlidingWindow 时指定。
@@ -75,6 +77,15 @@ func (sw *SlidingWindow) GetHits(nowMs int64, metricNames ...string) map[string]
 		for _, metricName := range metricNames {
 			stats[metricName] += cell.stats[metricName]
 		}
+	}
+	return stats
+}
+
+func (sw *SlidingWindow) GetNowHits(nowMs int64, metricNames ...string) map[string]int64 {
+	cell := sw.getCell(nowMs)
+	stats := map[string]int64{}
+	for _, metricName := range metricNames {
+		stats[metricName] += cell.stats[metricName]
 	}
 	return stats
 }

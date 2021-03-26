@@ -255,9 +255,9 @@ func (cc *clientConn) killWaitTimeOutConn(ctx context.Context, connectionID uint
 func (cc *clientConn) setWaitTimeout(ctx context.Context) {
 	var wt time.Duration
 	waitTimeout := cc.getSessionVarsWaitTimeout(ctx)
-	wt = cc.server.sessionTimeout
+	wt = time.Duration(cc.server.sessionTimeout) * time.Second
 	if waitTimeout != 0 {
-		wt = time.Duration(waitTimeout)
+		wt = time.Duration(waitTimeout) * time.Second
 	}
 	t := time.Now()
 	cc.server.tw.Add(wt, cc.connectionID, func() { cc.killWaitTimeOutConn(ctx, cc.connectionID, t) })

@@ -1,7 +1,6 @@
 package namespace
 
 import (
-	"errors"
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
 	rb "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker"
@@ -24,8 +23,9 @@ type strategyInfo struct {
 	cellIntervalMs       int64
 }
 
-type BreakerManger struct {
+type BreakerManager struct {
 	rwLock     sync.RWMutex
+	bmset      map[string]struct{}
 	b          []map[string]*cb.CircuitBreaker
 	tw         *timer.TimeWheel
 	scope      string
@@ -34,12 +34,12 @@ type BreakerManger struct {
 }
 
 type Breaker struct {
-	bm *BreakerManger
+	bm *BreakerManager
 }
 
 var (
-	timeWheelUnit       = time.Second * 1
-	timeWheelBucketsNum = 3600
+	timeWheelUnit       = time.Millisecond * 10
+	timeWheelBucketsNum = 10
 )
 
 type StrategySlice []config.StrategyInfo
@@ -56,7 +56,7 @@ func (a StrategySlice) Less(i, j int) bool {
 }
 
 func NewBreaker(br *config.BreakerInfo) (*Breaker, error) {
-	nbm, err := NewBreakerManger(br)
+	nbm, err := NewBreakerManager(br)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func getHashFactor(num int) uint64 {
 	return uint64(HashFactor) * 10
 }
 
-func NewBreakerManger(br *config.BreakerInfo) (*BreakerManger, error) {
+func NewBreakerManager(br *config.BreakerInfo) (*BreakerManager, error) {
 	strategyLenth := len(br.Strategies)
 	strategies := make([]strategyInfo, strategyLenth)
 	brArray := make([]map[string]*cb.CircuitBreaker, strategyLenth)
@@ -113,6 +113,7 @@ func NewBreakerManger(br *config.BreakerInfo) (*BreakerManger, error) {
 		}
 
 		b := make(map[string]*cb.CircuitBreaker)
+
 		brArray[idx] = b
 	}
 
@@ -122,8 +123,10 @@ func NewBreakerManger(br *config.BreakerInfo) (*BreakerManger, error) {
 	}
 	tw.Start()
 
-	return &BreakerManger{
+	bmset := make(map[string]struct{})
+	return &BreakerManager{
 		b:          brArray,
+		bmset:      bmset,
 		scope:      br.Scope,
 		tw:         tw,
 		strategies: strategies,
@@ -131,17 +134,25 @@ func NewBreakerManger(br *config.BreakerInfo) (*BreakerManger, error) {
 	}, nil
 }
 
-func (this *BreakerManger) GetBreakerScope() string {
+func (this *BreakerManager) IsUseBreaker() bool {
+	if len(this.strategies) == 0 {
+		return false
+	}
+	return true
+}
+
+func (this *BreakerManager) GetBreakerScope() string {
 	return this.scope
 }
 
-func (this *BreakerManger) hit(name string, idx int, isFail bool) error {
-	if _, ok := this.b[0][name]; !ok {
-		return errors.New("breaker nil")
-	}
+func (this *BreakerManager) hit(name string, idx int, isFail bool) error {
 	nowMs := rb.GetNowMs()
-	status := this.b[idx][name].Status()
-	switch status {
+	val, ok := this.b[idx][name]
+	if !ok {
+		return nil
+	}
+
+	switch val.Status() {
 	case cb.CircuitBreakerStatusClosed:
 		this.b[idx][name].Hit(nowMs, false, isFail)
 	case cb.CircuitBreakerStatusOpen:
@@ -153,10 +164,10 @@ func (this *BreakerManger) hit(name string, idx int, isFail bool) error {
 	return nil
 }
 
-func (this *BreakerManger) Hit(name string, idx int, isFail bool) error {
+func (this *BreakerManager) Hit(name string, idx int, isFail bool) error {
 	this.rwLock.Lock()
 	defer this.rwLock.Unlock()
-	if _, ok := this.b[0][name]; !ok {
+	if _, ok := this.bmset[name]; !ok {
 		for idx, strategy := range this.strategies {
 			cbc := cb.NewCircuitBreakerConfig().
 				SetMinQPS(strategy.minQps).
@@ -169,6 +180,7 @@ func (this *BreakerManger) Hit(name string, idx int, isFail bool) error {
 			cbObj := cb.NewCircuitBreaker(cbc)
 			this.b[idx][name] = cbObj
 		}
+		this.bmset[name] = struct{}{}
 	}
 
 	if idx == -1 {
@@ -182,10 +194,10 @@ func (this *BreakerManger) Hit(name string, idx int, isFail bool) error {
 	return this.hit(name, idx, isFail)
 }
 
-func (this *BreakerManger) Status(name string) (int32, int) {
+func (this *BreakerManager) Status(name string) (int32, int) {
 	this.rwLock.RLock()
 	defer this.rwLock.RUnlock()
-	if _, ok := this.b[0][name]; !ok {
+	if _, ok := this.bmset[name]; !ok {
 		return cb.CircuitBreakerStatusClosed, 0
 	}
 	for idx, cbManager := range this.b {
@@ -196,9 +208,12 @@ func (this *BreakerManger) Status(name string) (int32, int) {
 	return cb.CircuitBreakerStatusClosed, 0
 }
 
-func (this *BreakerManger) CASHalfOpenProbeSent(name string, idx int, halfOpenProbeSent bool) bool {
+func (this *BreakerManager) CASHalfOpenProbeSent(name string, idx int, halfOpenProbeSent bool) bool {
 	this.rwLock.Lock()
 	defer this.rwLock.Unlock()
+	if _, ok := this.bmset[name]; !ok {
+		return false
+	}
 	if this.b[idx][name].GetHalfOpenProbeSent() == halfOpenProbeSent {
 		return false
 	}
@@ -206,7 +221,7 @@ func (this *BreakerManger) CASHalfOpenProbeSent(name string, idx int, halfOpenPr
 	return true
 }
 
-func (this *BreakerManger) AddTimeWheelTask(name string, connectionID uint64, flag *int32) error {
+func (this *BreakerManager) AddTimeWheelTask(name string, connectionID uint64, flag *int32) error {
 	for idx, strategy := range this.strategies {
 		hitNum := idx
 		if err := this.tw.Add(strategy.sqlTimeoutMsDuration, uint64(connectionID)*this.hashFactor+uint64(hitNum), func() {
@@ -219,7 +234,7 @@ func (this *BreakerManger) AddTimeWheelTask(name string, connectionID uint64, fl
 	return nil
 }
 
-func (this *BreakerManger) RemoveTimeWheelTask(connectionID uint64) error {
+func (this *BreakerManager) RemoveTimeWheelTask(connectionID uint64) error {
 	for idx := range this.strategies {
 		if err := this.tw.Remove(uint64(connectionID)*this.hashFactor + uint64(idx)); err != nil {
 			return err
@@ -228,7 +243,7 @@ func (this *BreakerManger) RemoveTimeWheelTask(connectionID uint64) error {
 	return nil
 }
 
-func (this *BreakerManger) CloseBreaker() {
+func (this *BreakerManager) CloseBreaker() {
 	this.tw.Stop()
 	this.b = nil
 }

@@ -13,6 +13,7 @@ type Namespace interface {
 	Name() string
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
+	IsDeniedSQL(sqlFeature uint32) bool
 	GetPooledConn(context.Context) (PooledBackendConn, error)
 	IncrConnCount()
 	DescConnCount()
@@ -20,6 +21,7 @@ type Namespace interface {
 }
 
 type Breaker interface {
+	IsUseBreaker() bool
 	GetBreakerScope() string
 	Hit(name string, idx int, isFail bool) error
 	Status(name string) (int32, int)

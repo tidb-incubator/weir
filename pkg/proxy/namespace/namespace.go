@@ -73,6 +73,10 @@ func (n *NamespaceWrapper) ListDatabases() []string {
 	return n.mustGetCurrentNamespace().ListDatabases()
 }
 
+func (n *NamespaceWrapper) IsDeniedSQL(sqlFeature uint32) bool {
+	return n.mustGetCurrentNamespace().IsDeniedSQL(sqlFeature)
+}
+
 func (n *NamespaceWrapper) GetPooledConn(ctx context.Context) (driver.PooledBackendConn, error) {
 	return n.mustGetCurrentNamespace().GetPooledConn(ctx)
 }

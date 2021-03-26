@@ -5,6 +5,10 @@ frontend:
     - "test_weir_db"
   slow_sql_time: 50
   denied_sqls:
+    - sql: "select * from test"
+      ttl: 0
+    - sql: "select count(*) from test"
+      ttl: 60
   denied_ips:
   idle_timeout: 3600
   users:
@@ -26,7 +30,7 @@ breaker:
     - min_qps: 3
       failure_ratethreshold: 0
       failure_num: 5
-      sql_timeoutMs: 2000
-      open_status_durationMs: 5000
+      sql_timeout_ms: 2000
+      open_status_duration_ms: 5000
       size: 10
-      cellIntervalMs: 1000
+      cellInterval_ms: 1000

@@ -241,22 +241,26 @@ func (cb *CircuitBreaker) Hit(nowMs int64, isProbe bool, isFailureHit bool) {
 		cb.sw.Hit(nowMs, metrics...)
 
 		if isFailureHit {
-			hitsStat := cb.sw.GetHits(nowMs, TotalHit, FailureHit)
-			failureHits := hitsStat[FailureHit]
-			totalHits := hitsStat[TotalHit]
-
 			statusCouldChange := false
+
 			if cb.config.failureNum != 0 {
-				if failureHits > cb.config.failureNum {
+				nowHitsStat := cb.sw.GetNowHits(nowMs, TotalHit, FailureHit)
+				failureHits := nowHitsStat[FailureHit]
+				totalHits := nowHitsStat[TotalHit]
+				if failureHits > cb.config.failureNum && (totalHits > cb.config.minQPS) {
 					statusCouldChange = true
 				}
 			} else {
+				hitsStat := cb.sw.GetHits(nowMs, TotalHit, FailureHit)
+				failureHits := hitsStat[FailureHit]
+				totalHits := hitsStat[TotalHit]
 				failureRate := int64(float64(failureHits) * 100 / float64(totalHits))
-				if failureRate > cb.config.failureRateThreshold {
+				if failureRate > cb.config.failureRateThreshold && (totalHits*1000/(cb.sw.Size*cb.sw.CellIntervalMs) > cb.config.minQPS) {
 					statusCouldChange = true
 				}
 			}
-			if statusCouldChange && (totalHits*1000/(cb.sw.Size*cb.sw.CellIntervalMs) > cb.config.minQPS) {
+
+			if statusCouldChange {
 				cb.status = CircuitBreakerStatusOpen
 				cb.openStartMs = nowMs
 				// reset other fields
