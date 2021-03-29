@@ -8,24 +8,24 @@ type Namespace struct {
 	Breaker   BreakerInfo       `yaml:"breaker"`
 }
 
-type DeniedSqlInfo struct {
-	Sql string `yaml:"sql"`
-	Ttl int64  `yaml:"ttl"`
-}
-
 type FrontendNamespace struct {
 	AllowedDBs      []string           `yaml:"allowed_dbs"`
 	SlowSQLTime     int                `yaml:"slow_sql_time"`
-	DeniedSQLs      []DeniedSqlInfo    `yaml:"denied_sqls"`
 	DeniedIPs       []string           `yaml:"denied_ips"`
 	IdleTimeout     int                `yaml:"idle_timeout"`
 	IsGlobalBreaker bool               `yaml:"global_breaker_switch"`
 	Users           []FrontendUserInfo `yaml:"users"`
+	SQLBlackList    []SQLInfo          `yaml:"sql_blacklist"`
+	SQLWhiteList    []SQLInfo          `yaml:"sql_whitelist"`
 }
 
 type FrontendUserInfo struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+}
+
+type SQLInfo struct {
+	SQL string `yaml:"sql"`
 }
 
 type BackendNamespace struct {
@@ -40,11 +40,11 @@ type BackendNamespace struct {
 type StrategyInfo struct {
 	MinQps               int64 `yaml:"min_qps"`
 	SqlTimeoutMs         int64 `yaml:"sql_timeout_ms"`
-	FailureRatethreshold int64 `yaml:"failure_ratethreshold"`
+	FailureRatethreshold int64 `yaml:"failure_rate_threshold"`
 	FailureNum           int64 `yaml:"failure_num"`
-	OpenStatusDurationMs int64 `yaml:"open_status_duratio_ms"`
+	OpenStatusDurationMs int64 `yaml:"open_status_duration_ms"`
 	Size                 int64 `yaml:"size"`
-	CellIntervalMs       int64 `yaml:"cellInterval_ms"`
+	CellIntervalMs       int64 `yaml:"cell_interval_ms"`
 }
 
 type BreakerInfo struct {

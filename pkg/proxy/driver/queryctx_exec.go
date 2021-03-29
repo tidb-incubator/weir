@@ -16,9 +16,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// TODO(eastfisher): implement this function
 func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sqlDigest uint32) bool {
 	return q.ns.IsDeniedSQL(sqlDigest)
+}
+
+func (q *QueryCtxImpl) isStmtAllowed(ctx context.Context, sqlDigest uint32) bool {
+	return q.ns.IsAllowedSQL(sqlDigest)
 }
 
 func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker Breaker) (string, bool) {

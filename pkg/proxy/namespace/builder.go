@@ -1,13 +1,16 @@
 package namespace
 
 import (
+	"hash/crc32"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
+	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
 	"github.com/pingcap-incubator/weir/pkg/util/datastructure"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/parser"
 )
 
 type NamespaceImpl struct {
@@ -76,6 +79,42 @@ func BuildFrontend(cfg *config.FrontendNamespace) (Frontend, error) {
 		userPasswds[u.Username] = u.Password
 	}
 	fns.userPasswd = userPasswds
+
+	sqlBlacklist := make(map[uint32]SQLInfo)
+	fns.sqlBlacklist = sqlBlacklist
+
+	p := parser.New()
+	for _, deniedSQL := range cfg.SQLBlackList {
+		stmtNodes, _, err := p.Parse(deniedSQL.SQL, "", "")
+		if err != nil {
+			return nil, err
+		}
+		if len(stmtNodes) != 1 {
+			return nil, nil
+		}
+		v, err := wast.ExtractAstVisit(stmtNodes[0])
+		if err != nil {
+			return nil, err
+		}
+		fns.sqlBlacklist[crc32.ChecksumIEEE([]byte(v.SqlFeature()))] = SQLInfo{SQL: deniedSQL.SQL}
+	}
+
+	sqlWhitelist := make(map[uint32]SQLInfo)
+	fns.sqlWhitelist = sqlWhitelist
+	for _, allowedSQL := range cfg.SQLWhiteList {
+		stmtNodes, _, err := p.Parse(allowedSQL.SQL, "", "")
+		if err != nil {
+			return nil, err
+		}
+		if len(stmtNodes) != 1 {
+			return nil, nil
+		}
+		v, err := wast.ExtractAstVisit(stmtNodes[0])
+		if err != nil {
+			return nil, err
+		}
+		fns.sqlWhitelist[crc32.ChecksumIEEE([]byte(v.SqlFeature()))] = SQLInfo{SQL: allowedSQL.SQL}
+	}
 
 	return fns, nil
 }

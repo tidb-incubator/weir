@@ -11,6 +11,7 @@ type Namespace interface {
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
 	IsDeniedSQL(sqlFeature uint32) bool
+	IsAllowedSQL(sqlFeature uint32) bool
 	GetPooledConn(context.Context) (driver.PooledBackendConn, error)
 	Close()
 	GetBreaker() (driver.Breaker, error)
@@ -21,6 +22,7 @@ type Frontend interface {
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
 	IsDeniedSQL(sqlFeature uint32) bool
+	IsAllowedSQL(sqlFeature uint32) bool
 }
 
 type Backend interface {

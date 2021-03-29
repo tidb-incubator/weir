@@ -24,9 +24,9 @@ breaker:
   scope: "sql"
   strategies:
     - min_qps: 3
-      failure_ratethreshold: 0
+      failure_rate_threshold: 0
       failure_num: 5
       sql_timeoutMs: 2000
-      open_status_durationMs: 5000
+      open_status_duration_ms: 5000
       size: 10
-      cellIntervalMs: 1000
+      cell_interval_ms: 1000

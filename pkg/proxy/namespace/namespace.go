@@ -77,6 +77,10 @@ func (n *NamespaceWrapper) IsDeniedSQL(sqlFeature uint32) bool {
 	return n.mustGetCurrentNamespace().IsDeniedSQL(sqlFeature)
 }
 
+func (n *NamespaceWrapper) IsAllowedSQL(sqlFeature uint32) bool {
+	return n.mustGetCurrentNamespace().IsAllowedSQL(sqlFeature)
+}
+
 func (n *NamespaceWrapper) GetPooledConn(ctx context.Context) (driver.PooledBackendConn, error) {
 	return n.mustGetCurrentNamespace().GetPooledConn(ctx)
 }
