@@ -2,26 +2,25 @@ package namespace
 
 import (
 	"bytes"
+	"hash/crc32"
 
 	"github.com/pingcap-incubator/weir/pkg/config"
 	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
 	"github.com/pingcap-incubator/weir/pkg/util/datastructure"
 	"github.com/pingcap-incubator/weir/pkg/util/passwd"
 	"github.com/pingcap/parser"
-	"hash/crc32"
-	"time"
 )
 
-type DeniedSQLInfo struct {
-	Sql string
-	Ttl int64
+type SQLInfo struct {
+	SQL string
 }
 
 type FrontendNamespace struct {
 	allowedDBs   []string
 	allowedDBSet map[string]struct{}
 	userPasswd   map[string]string
-	deniedSQLs   map[uint32]DeniedSQLInfo
+	sqlBlacklist map[uint32]SQLInfo
+	sqlWhitelist map[uint32]SQLInfo
 }
 
 func CreateFrontendNamespace(namespace string, cfg *config.FrontendNamespace) (*FrontendNamespace, error) {
@@ -36,12 +35,12 @@ func CreateFrontendNamespace(namespace string, cfg *config.FrontendNamespace) (*
 	}
 	fns.userPasswd = userPasswd
 
-	deniedSQLs := make(map[uint32]DeniedSQLInfo)
-	fns.deniedSQLs = deniedSQLs
+	sqlBlacklist := make(map[uint32]SQLInfo)
+	fns.sqlBlacklist = sqlBlacklist
 
 	p := parser.New()
-	for _, deniedSQL := range cfg.DeniedSQLs {
-		stmtNodes, _, err := p.Parse(deniedSQL.Sql, "", "")
+	for _, deniedSQL := range cfg.SQLBlackList {
+		stmtNodes, _, err := p.Parse(deniedSQL.SQL, "", "")
 		if err != nil {
 			return nil, err
 		}
@@ -52,11 +51,25 @@ func CreateFrontendNamespace(namespace string, cfg *config.FrontendNamespace) (*
 		if err != nil {
 			return nil, err
 		}
-		if deniedSQL.Ttl != 0 {
-			deniedSQL.Ttl = time.Now().Unix() + deniedSQL.Ttl
-		}
-		fns.deniedSQLs[crc32.ChecksumIEEE([]byte(v.SqlFeature()))] = DeniedSQLInfo{Sql: deniedSQL.Sql, Ttl: deniedSQL.Ttl}
+		fns.sqlBlacklist[crc32.ChecksumIEEE([]byte(v.SqlFeature()))] = SQLInfo{SQL: deniedSQL.SQL}
 	}
+
+	sqlWhitelist := make(map[uint32]SQLInfo)
+	for _, allowedSQL := range cfg.SQLWhiteList {
+		stmtNodes, _, err := p.Parse(allowedSQL.SQL, "", "")
+		if err != nil {
+			return nil, err
+		}
+		if len(stmtNodes) != 1 {
+			return nil, nil
+		}
+		v, err := wast.ExtractAstVisit(stmtNodes[0])
+		if err != nil {
+			return nil, err
+		}
+		fns.sqlWhitelist[crc32.ChecksumIEEE([]byte(v.SqlFeature()))] = SQLInfo{SQL: allowedSQL.SQL}
+	}
+	fns.sqlWhitelist = sqlWhitelist
 
 	return fns, nil
 }
@@ -82,14 +95,11 @@ func (n *FrontendNamespace) ListDatabases() []string {
 }
 
 func (n *FrontendNamespace) IsDeniedSQL(sqlFeature uint32) bool {
-	if val, ok := n.deniedSQLs[sqlFeature]; ok {
-		if val.Ttl == 0 {
-			return true
-		}
-		if time.Now().Unix() > val.Ttl {
-			return false
-		}
-		return true
-	}
-	return false
+	_, ok := n.sqlBlacklist[sqlFeature]
+	return ok
+}
+
+func (n *FrontendNamespace) IsAllowedSQL(sqlFeature uint32) bool {
+	_, ok := n.sqlWhitelist[sqlFeature]
+	return ok
 }

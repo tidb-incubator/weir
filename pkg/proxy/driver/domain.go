@@ -14,6 +14,7 @@ type Namespace interface {
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
 	IsDeniedSQL(sqlFeature uint32) bool
+	IsAllowedSQL(sqlFeature uint32) bool
 	GetPooledConn(context.Context) (PooledBackendConn, error)
 	IncrConnCount()
 	DescConnCount()
