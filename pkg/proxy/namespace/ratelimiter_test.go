@@ -20,3 +20,11 @@ func TestNamespaceRateLimiter_Limit(t *testing.T) {
 	time.Sleep(time.Second)
 	require.NoError(t, rateLimiter.Limit(ctx, key1))
 }
+
+func TestNamespaceRateLimiter_ZeroThreshold(t *testing.T) {
+	ctx := context.Background()
+	key1 := "hello"
+	rateLimiter := NewNamespaceRateLimiter("namespace", 0)
+	require.NoError(t, rateLimiter.Limit(ctx, key1))
+	require.NoError(t, rateLimiter.Limit(ctx, key1))
+}
