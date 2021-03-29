@@ -29,6 +29,6 @@ func (n *NamespaceRateLimiter) Limit(ctx context.Context, key string) error {
 	if n.qpsThreshold <= 0 {
 		return nil
 	}
-	limiter, _ := n.limiters.LoadOrStore(key, rate_limit.NewLeakyBucketRateLimiter(int64(n.qpsThreshold)))
-	return limiter.(*rate_limit.LeakyBucketRateLimiter).Limit()
+	limiter, _ := n.limiters.LoadOrStore(key, rate_limit.NewSlidingWindowRateLimiter(int64(n.qpsThreshold)))
+	return limiter.(*rate_limit.SlidingWindowRateLimiter).Limit()
 }
