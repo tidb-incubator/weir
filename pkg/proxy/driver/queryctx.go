@@ -126,7 +126,7 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 	}
 
 	if !q.isStmtNeedToCheckCircuitBreaking(stmt) {
-		return q.executeStmt(ctx, sql, stmt)
+		return q.execute(ctx, sql, stmt)
 	}
 
 	return q.executeWithBreakerInterceptor(ctx, stmt, sql, sqlDigest)
