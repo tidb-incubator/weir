@@ -46,6 +46,20 @@ func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker B
 	}
 }
 
+func (q *QueryCtxImpl) getRateLimiterKey(ctx context.Context, rateLimiter RateLimiter) (string, bool) {
+	switch rateLimiter.Scope() {
+	case "namespace":
+		return q.ns.Name(), true
+	case "db":
+		return q.currentDB, true
+	case "table":
+		firstTableName, _ := wast.GetAstTableNameFromCtx(ctx)
+		return firstTableName, true
+	default:
+		return "", false
+	}
+}
+
 func (q *QueryCtxImpl) extractSqlParadigm(ctx context.Context, sql string) (string, error) {
 	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
 	featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
