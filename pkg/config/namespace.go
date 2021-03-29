@@ -40,11 +40,11 @@ type BackendNamespace struct {
 type StrategyInfo struct {
 	MinQps               int64 `yaml:"min_qps"`
 	SqlTimeoutMs         int64 `yaml:"sql_timeout_ms"`
-	FailureRatethreshold int64 `yaml:"failure_ratethreshold"`
+	FailureRatethreshold int64 `yaml:"failure_rate_threshold"`
 	FailureNum           int64 `yaml:"failure_num"`
-	OpenStatusDurationMs int64 `yaml:"open_status_duratio_ms"`
+	OpenStatusDurationMs int64 `yaml:"open_status_duration_ms"`
 	Size                 int64 `yaml:"size"`
-	CellIntervalMs       int64 `yaml:"cellInterval_ms"`
+	CellIntervalMs       int64 `yaml:"cell_interval_ms"`
 }
 
 type BreakerInfo struct {
