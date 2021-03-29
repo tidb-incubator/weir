@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+
 	"github.com/siddontang/go-mysql/mysql"
 )
 
@@ -19,6 +20,7 @@ type Namespace interface {
 	IncrConnCount()
 	DescConnCount()
 	GetBreaker() (Breaker, error)
+	GetRateLimiter() RateLimiter
 }
 
 type Breaker interface {
@@ -30,6 +32,11 @@ type Breaker interface {
 	RemoveTimeWheelTask(connectionID uint64) error
 	CASHalfOpenProbeSent(name string, idx int, halfOpenProbeSent bool) bool
 	CloseBreaker()
+}
+
+type RateLimiter interface {
+	Scope() string
+	Limit(ctx context.Context, key string) error
 }
 
 type PooledBackendConn interface {

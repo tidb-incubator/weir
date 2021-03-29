@@ -1,22 +1,22 @@
 package config
 
 type Namespace struct {
-	Version   string            `yaml:"version"`
-	Namespace string            `yaml:"namespace"`
-	Frontend  FrontendNamespace `yaml:"frontend"`
-	Backend   BackendNamespace  `yaml:"backend"`
-	Breaker   BreakerInfo       `yaml:"breaker"`
+	Version     string            `yaml:"version"`
+	Namespace   string            `yaml:"namespace"`
+	Frontend    FrontendNamespace `yaml:"frontend"`
+	Backend     BackendNamespace  `yaml:"backend"`
+	Breaker     BreakerInfo       `yaml:"breaker"`
+	RateLimiter RateLimiterInfo   `yaml:"rate_limiter"`
 }
 
 type FrontendNamespace struct {
-	AllowedDBs      []string           `yaml:"allowed_dbs"`
-	SlowSQLTime     int                `yaml:"slow_sql_time"`
-	DeniedIPs       []string           `yaml:"denied_ips"`
-	IdleTimeout     int                `yaml:"idle_timeout"`
-	IsGlobalBreaker bool               `yaml:"global_breaker_switch"`
-	Users           []FrontendUserInfo `yaml:"users"`
-	SQLBlackList    []SQLInfo          `yaml:"sql_blacklist"`
-	SQLWhiteList    []SQLInfo          `yaml:"sql_whitelist"`
+	AllowedDBs   []string           `yaml:"allowed_dbs"`
+	SlowSQLTime  int                `yaml:"slow_sql_time"`
+	DeniedIPs    []string           `yaml:"denied_ips"`
+	IdleTimeout  int                `yaml:"idle_timeout"`
+	Users        []FrontendUserInfo `yaml:"users"`
+	SQLBlackList []SQLInfo          `yaml:"sql_blacklist"`
+	SQLWhiteList []SQLInfo          `yaml:"sql_whitelist"`
 }
 
 type FrontendUserInfo struct {
@@ -26,6 +26,11 @@ type FrontendUserInfo struct {
 
 type SQLInfo struct {
 	SQL string `yaml:"sql"`
+}
+
+type RateLimiterInfo struct {
+	Scope string `yaml:"scope"`
+	QPS   int    `yaml:"qps"`
 }
 
 type BackendNamespace struct {

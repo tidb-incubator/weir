@@ -133,6 +133,12 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return q.execute(ctx, sql, stmt)
 	}
 
+	if rateLimitKey, ok := q.getRateLimiterKey(ctx, q.ns.GetRateLimiter()); ok && rateLimitKey != "" {
+		if err := q.ns.GetRateLimiter().Limit(ctx, rateLimitKey); err != nil {
+			return nil, err
+		}
+	}
+
 	return q.executeWithBreakerInterceptor(ctx, stmt, sql, sqlDigest)
 }
 

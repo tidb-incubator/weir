@@ -35,3 +35,6 @@ breaker:
       open_status_duration_ms: 5000
       size: 10
       cell_interval_ms: 1000
+rate_limiter:
+  scope: "db"
+  qps: 1000

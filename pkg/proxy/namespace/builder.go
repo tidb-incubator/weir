@@ -18,6 +18,7 @@ type NamespaceImpl struct {
 	Br   driver.Breaker
 	Backend
 	Frontend
+	rateLimiter *NamespaceRateLimiter
 }
 
 func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
@@ -43,6 +44,10 @@ func BuildNamespace(cfg *config.Namespace) (Namespace, error) {
 		return nil, err
 	}
 	wrapper.Br = br
+
+	rateLimiter := NewNamespaceRateLimiter(cfg.RateLimiter.Scope, cfg.RateLimiter.QPS)
+	wrapper.rateLimiter = rateLimiter
+
 	return wrapper, nil
 }
 
@@ -52,6 +57,10 @@ func (n *NamespaceImpl) Name() string {
 
 func (n *NamespaceImpl) GetBreaker() (driver.Breaker, error) {
 	return n.Br, nil
+}
+
+func (n *NamespaceImpl) GetRateLimiter() driver.RateLimiter {
+	return n.rateLimiter
 }
 
 func BuildBackend(ns string, cfg *config.BackendNamespace) (Backend, error) {
