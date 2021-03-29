@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
+	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
@@ -14,22 +15,18 @@ import (
 )
 
 // TODO(eastfisher): implement this function
-func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sql string, stmtNode ast.StmtNode) bool {
-	//todo解析sql
-
-	return false
+func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sqlDigest uint32) bool {
+	return q.ns.IsDeniedSQL(sqlDigest)
 }
 
 func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker Breaker) (string, error) {
 	switch breaker.GetBreakerScope() {
-	case "global":
-		return q.ns.Name(), nil
 	case "namesapce":
 		return q.ns.Name(), nil
 	case "db":
 		return q.currentDB, nil
 	case "table":
-		firstTableName, _ := GetAstTableNameFromCtx(ctx)
+		firstTableName, _ := wast.GetAstTableNameFromCtx(ctx)
 		return firstTableName, nil
 	case "sql":
 		sqlParadigm, err := q.extractSqlParadigm(ctx, sql)
@@ -37,7 +34,7 @@ func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker B
 			return "", err
 		}
 		sqlDigest := crc32.ChecksumIEEE([]byte(sqlParadigm))
-		return string(UInt322Bytes(sqlDigest)), nil
+		return string(wast.UInt322Bytes(sqlDigest)), nil
 	default:
 		return "", errors.New("breaker_name err")
 	}
@@ -49,7 +46,7 @@ func (q *QueryCtxImpl) extractSqlParadigm(ctx context.Context, sql string) (stri
 	if err != nil {
 		return "", err
 	}
-	visitor, err := ExtractAstVisit(featureStmt)
+	visitor, err := wast.ExtractAstVisit(featureStmt)
 	if err != nil {
 		return "", err
 	}

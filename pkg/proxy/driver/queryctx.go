@@ -3,9 +3,11 @@ package driver
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
 	cb "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker/circuit_breaker"
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
@@ -40,7 +42,7 @@ type QueryCtxImpl struct {
 	parser      *parser.Parser
 	sessionVars *SessionVarsWrapper
 
-	connMgr            *BackendConnManager
+	connMgr *BackendConnManager
 }
 
 func NewQueryCtxImpl(nsmgr NamespaceManager, connId uint64) *QueryCtxImpl {
@@ -109,22 +111,28 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return nil, err
 	}
 
-	tableName := extractFirstTableNameFromStmt(stmt)
-	ctx = CtxWithAstTableName(ctx, tableName)
+	tableName := wast.ExtractFirstTableNameFromStmt(stmt)
+	ctx = wast.CtxWithAstTableName(ctx, tableName)
 
-	if q.isStmtDenied(ctx, sql, stmt) {
+	sqlParadigm, err := q.extractSqlParadigm(ctx, sql)
+	if err != nil {
+		return nil, err
+	}
+	sqlDigest := crc32.ChecksumIEEE([]byte(sqlParadigm))
+
+	if q.isStmtDenied(ctx, sqlDigest) {
 		q.recordDeniedQueryMetrics(ctx, stmt)
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
 	}
 
-	if !isStmtNeedToCheckCircuitBreaking(stmt) {
+	if !q.isStmtNeedToCheckCircuitBreaking(stmt) {
 		return q.executeStmt(ctx, sql, stmt)
 	}
 
-	return q.executeWithBreakerInterceptor(ctx, stmt, sql)
+	return q.executeWithBreakerInterceptor(ctx, stmt, sql, sqlDigest)
 }
 
-func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNode ast.StmtNode, sql string) (*gomysql.Result, error) {
+func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNode ast.StmtNode, sql string, sqlDigest uint32) (*gomysql.Result, error) {
 	startTime := time.Now()
 
 	breaker, err := q.ns.GetBreaker()
@@ -258,7 +266,14 @@ func (q *QueryCtxImpl) initAttachedConnHolder() {
 	q.connMgr = connMgr
 }
 
-func isStmtNeedToCheckCircuitBreaking(stmt ast.StmtNode) bool {
+func (q *QueryCtxImpl) isStmtNeedToCheckCircuitBreaking(stmt ast.StmtNode) bool {
+	breaker, err := q.ns.GetBreaker()
+	if err != nil {
+		return false
+	}
+	if !breaker.IsUseBreaker() {
+		return false
+	}
 	switch stmt.(type) {
 	case *ast.SelectStmt:
 		return true
@@ -272,4 +287,3 @@ func isStmtNeedToCheckCircuitBreaking(stmt ast.StmtNode) bool {
 		return false
 	}
 }
-

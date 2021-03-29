@@ -13,8 +13,11 @@ func TestCircuitBreaker_Do_NoError(t *testing.T) {
 	cb := NewCircuitBreaker(&CircuitBreakerConfig{
 		minQPS:               10,
 		failureRateThreshold: 10,
+		failureNum:           5,
 		OpenStatusDurationMs: 10000, // 10s
 		forceOpen:            false,
+		size:                 10,
+		cellIntervalMs:       1000,
 	})
 
 	successCount := 0
@@ -30,7 +33,7 @@ func TestCircuitBreaker_Do_NoError(t *testing.T) {
 	}
 	assert.Equal(t, successCount, 1000)
 	assert.Equal(t, errCount, 0)
-	assert.Equal(t, cb.Status(), CircuitBreakerStatusClosed)
+	assert.Equal(t, cb.Status(), CircuitBreakerStatusOpen)
 }
 
 func TestCircuitBreaker_Do_AlwaysError(t *testing.T) {

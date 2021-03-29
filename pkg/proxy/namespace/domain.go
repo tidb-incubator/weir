@@ -10,6 +10,7 @@ type Namespace interface {
 	Auth(username string, passwdBytes []byte, salt []byte) bool
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
+	IsDeniedSQL(sqlFeature uint32) bool
 	GetPooledConn(context.Context) (driver.PooledBackendConn, error)
 	Close()
 	GetBreaker() (driver.Breaker, error)
@@ -19,6 +20,7 @@ type Frontend interface {
 	Auth(username string, passwdBytes []byte, salt []byte) bool
 	IsDatabaseAllowed(db string) bool
 	ListDatabases() []string
+	IsDeniedSQL(sqlFeature uint32) bool
 }
 
 type Backend interface {

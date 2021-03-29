@@ -80,14 +80,6 @@ func BuildFrontend(cfg *config.FrontendNamespace) (Frontend, error) {
 	return fns, nil
 }
 
-// func BuildBreaker(br *config.BreakerInfo) (BreakerHolder, error) {
-// 	breaker, err := NewBreaker(br)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return breaker, nil
-// }
-
 func parseBackendConfig(cfg *config.BackendNamespace) (*backend.BackendConfig, error) {
 	selectorType, valid := backend.SelectorNameToType(cfg.SelectorType)
 	if !valid {

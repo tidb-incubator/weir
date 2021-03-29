@@ -1,4 +1,4 @@
-package driver
+package ast
 
 import (
 	"context"
@@ -51,7 +51,7 @@ func (f *FirstTableNameVisitor) TableName() string {
 	return f.table
 }
 
-func extractFirstTableNameFromStmt(stmt ast.StmtNode) string {
+func ExtractFirstTableNameFromStmt(stmt ast.StmtNode) string {
 	visitor := &FirstTableNameVisitor{}
 	stmt.Accept(visitor)
 	return visitor.table

@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
+	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
 	"github.com/pingcap/parser/ast"
 )
 
 func (q *QueryCtxImpl) recordQueryMetrics(ctx context.Context, stmt ast.StmtNode, err error, durationMilliSecond float64) {
 	ns := q.ns.Name()
 	db := q.currentDB
-	firstTableName, _ := GetAstTableNameFromCtx(ctx)
+	firstTableName, _ := wast.GetAstTableNameFromCtx(ctx)
 	stmtType := metrics.GetStmtTypeName(stmt)
 	retLabel := metrics.RetLabel(err)
 
@@ -21,7 +22,7 @@ func (q *QueryCtxImpl) recordQueryMetrics(ctx context.Context, stmt ast.StmtNode
 func (q *QueryCtxImpl) recordDeniedQueryMetrics(ctx context.Context, stmt ast.StmtNode) {
 	ns := q.ns.Name()
 	db := q.currentDB
-	firstTableName, _ := GetAstTableNameFromCtx(ctx)
+	firstTableName, _ := wast.GetAstTableNameFromCtx(ctx)
 	stmtType := metrics.GetStmtTypeName(stmt)
 
 	metrics.QueryCtxQueryDeniedCounter.WithLabelValues(ns, db, firstTableName, stmtType).Inc()

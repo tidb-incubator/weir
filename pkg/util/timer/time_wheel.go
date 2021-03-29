@@ -34,9 +34,9 @@ func NewTimeWheel(tick time.Duration, bucketsNum int) (*TimeWheel, error) {
 	if bucketsNum <= 0 {
 		return nil, errors.New("bucket number must be greater than 0")
 	}
-	if int(tick.Seconds()) < 1 {
-		return nil, errors.New("tick cannot be less than 1s")
-	}
+	// if int(tick.Seconds()) < 1 {
+	// 	return nil, errors.New("tick cannot be less than 1s")
+	// }
 
 	tw := &TimeWheel{
 		tick:          tick,
@@ -122,15 +122,15 @@ func (tw *TimeWheel) add(task *Task) {
 }
 
 func (tw *TimeWheel) calculateRound(delay time.Duration) (round int) {
-	delaySeconds := int(delay.Seconds())
-	tickSeconds := int(tw.tick.Seconds())
+	delaySeconds := int(delay.Milliseconds())
+	tickSeconds := int(tw.tick.Milliseconds())
 	round = delaySeconds / tickSeconds / tw.bucketsNum
 	return
 }
 
 func (tw *TimeWheel) calculateIndex(delay time.Duration) (index int) {
-	delaySeconds := int(delay.Seconds())
-	tickSeconds := int(tw.tick.Seconds())
+	delaySeconds := int(delay.Milliseconds())
+	tickSeconds := int(tw.tick.Milliseconds())
 	index = (tw.currentIndex + delaySeconds/tickSeconds) % tw.bucketsNum
 	return
 }
