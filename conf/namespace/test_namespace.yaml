@@ -4,11 +4,12 @@ frontend:
   allowed_dbs:
     - "test_weir_db"
   slow_sql_time: 50
-  denied_sqls:
-    - sql: "select * from test"
-      ttl: 0
-    - sql: "select count(*) from test"
-      ttl: 60
+  sql_blacklist:
+    - sql: "select * from tbl0"
+    - sql: "select * from tbl1"
+  sql_whitelist:
+    - sql: "select * from tbl2"
+    - sql: "select * from tbl3"
   denied_ips:
   idle_timeout: 3600
   users:

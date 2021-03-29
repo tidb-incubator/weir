@@ -8,24 +8,24 @@ type Namespace struct {
 	Breaker   BreakerInfo       `yaml:"breaker"`
 }
 
-type DeniedSqlInfo struct {
-	Sql string `yaml:"sql"`
-	Ttl int64  `yaml:"ttl"`
-}
-
 type FrontendNamespace struct {
 	AllowedDBs      []string           `yaml:"allowed_dbs"`
 	SlowSQLTime     int                `yaml:"slow_sql_time"`
-	DeniedSQLs      []DeniedSqlInfo    `yaml:"denied_sqls"`
 	DeniedIPs       []string           `yaml:"denied_ips"`
 	IdleTimeout     int                `yaml:"idle_timeout"`
 	IsGlobalBreaker bool               `yaml:"global_breaker_switch"`
 	Users           []FrontendUserInfo `yaml:"users"`
+	SQLBlackList    []SQLInfo          `yaml:"sql_blacklist"`
+	SQLWhiteList    []SQLInfo          `yaml:"sql_whitelist"`
 }
 
 type FrontendUserInfo struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+}
+
+type SQLInfo struct {
+	SQL string `yaml:"sql"`
 }
 
 type BackendNamespace struct {
