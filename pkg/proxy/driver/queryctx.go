@@ -125,6 +125,10 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 		return nil, mysql.NewErrf(mysql.ErrUnknown, "statement is denied")
 	}
 
+	if q.isStmtAllowed(ctx, sqlDigest) {
+		return q.execute(ctx, sql, stmt)
+	}
+
 	if !q.isStmtNeedToCheckCircuitBreaking(stmt) {
 		return q.execute(ctx, sql, stmt)
 	}
