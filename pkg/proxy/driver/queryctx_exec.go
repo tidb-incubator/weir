@@ -11,7 +11,9 @@ import (
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
+	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
+	"go.uber.org/zap"
 )
 
 // TODO(eastfisher): implement this function
@@ -19,24 +21,25 @@ func (q *QueryCtxImpl) isStmtDenied(ctx context.Context, sqlDigest uint32) bool 
 	return q.ns.IsDeniedSQL(sqlDigest)
 }
 
-func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker Breaker) (string, error) {
+func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker Breaker) (string, bool) {
 	switch breaker.GetBreakerScope() {
 	case "namesapce":
-		return q.ns.Name(), nil
+		return q.ns.Name(), true
 	case "db":
-		return q.currentDB, nil
+		return q.currentDB, true
 	case "table":
 		firstTableName, _ := wast.GetAstTableNameFromCtx(ctx)
-		return firstTableName, nil
+		return firstTableName, true
 	case "sql":
 		sqlParadigm, err := q.extractSqlParadigm(ctx, sql)
 		if err != nil {
-			return "", err
+			logutil.BgLogger().Error("extract sql paradigm error", zap.String("namespace", q.ns.Name()), zap.String("database", q.currentDB), zap.Uint64("connId", q.connId), zap.String("sql", sql), zap.Error(err))
+			return "", false
 		}
 		sqlDigest := crc32.ChecksumIEEE([]byte(sqlParadigm))
-		return string(wast.UInt322Bytes(sqlDigest)), nil
+		return string(wast.UInt322Bytes(sqlDigest)), true
 	default:
-		return "", errors.New("breaker_name err")
+		return "", false
 	}
 }
 

@@ -126,23 +126,21 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 	}
 
 	if !q.isStmtNeedToCheckCircuitBreaking(stmt) {
-		return q.executeStmt(ctx, sql, stmt)
+		return q.execute(ctx, sql, stmt)
 	}
 
 	return q.executeWithBreakerInterceptor(ctx, stmt, sql, sqlDigest)
 }
 
 func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNode ast.StmtNode, sql string, sqlDigest uint32) (*gomysql.Result, error) {
-	startTime := time.Now()
-
 	breaker, err := q.ns.GetBreaker()
 	if err != nil {
 		return nil, err
 	}
 
-	brName, err := q.getBreakerName(ctx, sql, breaker)
-	if err != nil {
-		return nil, err
+	brName, ok := q.getBreakerName(ctx, sql, breaker)
+	if !ok {
+		return q.execute(ctx, sql, stmtNode)
 	}
 
 	status, brNum := breaker.Status(brName)
@@ -161,14 +159,22 @@ func (q *QueryCtxImpl) executeWithBreakerInterceptor(ctx context.Context, stmtNo
 	if err := breaker.AddTimeWheelTask(brName, connId, &triggerFlag); err != nil {
 		return nil, err
 	}
-	ret, err := q.executeStmt(ctx, sql, stmtNode)
 	// TODO: handle err
-	breaker.RemoveTimeWheelTask(connId)
+	defer breaker.RemoveTimeWheelTask(connId)
+
+	ret, err := q.execute(ctx, sql, stmtNode)
 
 	if triggerFlag == -1 {
 		// TODO: handle err
 		breaker.Hit(brName, -1, false)
 	}
+
+	return ret, err
+}
+
+func (q *QueryCtxImpl) execute(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
+	startTime := time.Now()
+	ret, err := q.executeStmt(ctx, sql, stmtNode)
 	durationMilliSecond := float64(time.Since(startTime)) / float64(time.Second)
 	q.recordQueryMetrics(ctx, stmtNode, err, durationMilliSecond)
 	return ret, err
