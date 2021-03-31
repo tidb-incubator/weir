@@ -11,11 +11,16 @@ frontend:
   allowed_dbs:
     - "test_weir_db"
   idle_timeout: 3600
+  sql_blacklist:
+    - sql: "select * from tbl0"
+  sql_whitelist:
+    - sql: "select * from tbl2"
   users:
     - username: "hello"
       password: "world"
     - username: "hello1"
       password: "world1"
+
 ```
 
 字段说明
