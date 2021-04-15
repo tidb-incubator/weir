@@ -24,6 +24,7 @@ const (
 	LblBatchGet    = "batch_get"
 	LblGet         = "get"
 	LblNamespace   = "namespace"
+	LblCluster     = "cluster"
 
 	LblBackendAddr = "backend_addr"
 )

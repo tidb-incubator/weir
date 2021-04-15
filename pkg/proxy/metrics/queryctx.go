@@ -46,7 +46,7 @@ var (
 			Subsystem: LabelQueryCtx,
 			Name:      "query_total",
 			Help:      "Counter of queries.",
-		}, []string{LblNamespace, LblDb, LblTable, LblSQLType, LblResult})
+		}, []string{LblCluster, LblNamespace, LblDb, LblTable, LblSQLType, LblResult})
 
 	QueryCtxQueryDeniedCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -54,7 +54,7 @@ var (
 			Subsystem: LabelQueryCtx,
 			Name:      "query_denied",
 			Help:      "Counter of denied queries.",
-		}, []string{LblNamespace, LblDb, LblTable, LblSQLType})
+		}, []string{LblCluster, LblNamespace, LblDb, LblTable, LblSQLType})
 
 	QueryCtxQueryDurationHistogram = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -63,7 +63,7 @@ var (
 			Name:      "handle_query_duration_seconds",
 			Help:      "Bucketed histogram of processing time (s) of handled queries.",
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 29), // 0.5ms ~ 1.5days
-		}, []string{LblNamespace, LblDb, LblTable, LblSQLType})
+		}, []string{LblCluster, LblNamespace, LblDb, LblTable, LblSQLType})
 
 	QueryCtxGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -71,7 +71,7 @@ var (
 			Subsystem: LabelQueryCtx,
 			Name:      "queryctx",
 			Help:      "Number of queryctx (equals to client connection).",
-		}, []string{LblNamespace})
+		}, []string{LblCluster, LblNamespace})
 
 	QueryCtxAttachedConnGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -79,7 +79,7 @@ var (
 			Subsystem: LabelQueryCtx,
 			Name:      "attached_connections",
 			Help:      "Number of attached backend connections.",
-		}, []string{LblNamespace})
+		}, []string{LblCluster, LblNamespace})
 
 	QueryCtxTransactionDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -88,7 +88,7 @@ var (
 			Name:      "transaction_duration_seconds",
 			Help:      "Bucketed histogram of a transaction execution duration, including retry.",
 			Buckets:   prometheus.ExponentialBuckets(0.001, 2, 28), // 1ms ~ 1.5days
-		}, []string{LblNamespace, LblDb, LblSQLType})
+		}, []string{LblCluster, LblNamespace, LblDb, LblSQLType})
 )
 
 func GetStmtType(stmt ast.StmtNode) AstStmtType {

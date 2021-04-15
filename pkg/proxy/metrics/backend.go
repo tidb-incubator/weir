@@ -4,9 +4,9 @@ import "github.com/prometheus/client_golang/prometheus"
 
 const (
 	BackendEventIniting = "initing"
-	BackendEventInited = "inited"
+	BackendEventInited  = "inited"
 	BackendEventClosing = "closing"
-	BackendEventClosed = "closed"
+	BackendEventClosed  = "closed"
 )
 
 var (
@@ -16,7 +16,7 @@ var (
 			Subsystem: LabelBackend,
 			Name:      "backend_event_total",
 			Help:      "Counter of backend event.",
-		}, []string{LblNamespace, LblType})
+		}, []string{LblCluster, LblNamespace, LblType})
 
 	BackendQueryCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -24,7 +24,7 @@ var (
 			Subsystem: LabelBackend,
 			Name:      "b_conn_cnt",
 			Help:      "Counter of backend query count.",
-		}, []string{LblNamespace, LblBackendAddr})
+		}, []string{LblCluster, LblNamespace, LblBackendAddr})
 
 	BackendConnInUseGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -32,5 +32,5 @@ var (
 			Subsystem: LabelBackend,
 			Name:      "b_conn_in_use",
 			Help:      "Number of backend conn in use.",
-		}, []string{LblNamespace, LblBackendAddr})
+		}, []string{LblCluster, LblNamespace, LblBackendAddr})
 )

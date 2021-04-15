@@ -51,36 +51,26 @@ const (
 )
 
 var (
-	queryTotalCountOk = [...]prometheus.Counter{
-		mysql.ComSleep:            metrics.QueryTotalCounter.WithLabelValues("Sleep", "OK"),
-		mysql.ComQuit:             metrics.QueryTotalCounter.WithLabelValues("Quit", "OK"),
-		mysql.ComInitDB:           metrics.QueryTotalCounter.WithLabelValues("InitDB", "OK"),
-		mysql.ComQuery:            metrics.QueryTotalCounter.WithLabelValues("Query", "OK"),
-		mysql.ComPing:             metrics.QueryTotalCounter.WithLabelValues("Ping", "OK"),
-		mysql.ComFieldList:        metrics.QueryTotalCounter.WithLabelValues("FieldList", "OK"),
-		mysql.ComStmtPrepare:      metrics.QueryTotalCounter.WithLabelValues("StmtPrepare", "OK"),
-		mysql.ComStmtExecute:      metrics.QueryTotalCounter.WithLabelValues("StmtExecute", "OK"),
-		mysql.ComStmtFetch:        metrics.QueryTotalCounter.WithLabelValues("StmtFetch", "OK"),
-		mysql.ComStmtClose:        metrics.QueryTotalCounter.WithLabelValues("StmtClose", "OK"),
-		mysql.ComStmtSendLongData: metrics.QueryTotalCounter.WithLabelValues("StmtSendLongData", "OK"),
-		mysql.ComStmtReset:        metrics.QueryTotalCounter.WithLabelValues("StmtReset", "OK"),
-		mysql.ComSetOption:        metrics.QueryTotalCounter.WithLabelValues("SetOption", "OK"),
+	mysqlComMapping = [...]string{
+		mysql.ComSleep:            "Sleep",
+		mysql.ComQuit:             "Quit",
+		mysql.ComInitDB:           "InitDB",
+		mysql.ComQuery:            "Query",
+		mysql.ComPing:             "Ping",
+		mysql.ComFieldList:        "FieldList",
+		mysql.ComStmtPrepare:      "StmtPrepare",
+		mysql.ComStmtExecute:      "StmtExecute",
+		mysql.ComStmtFetch:        "StmtFetch",
+		mysql.ComStmtClose:        "StmtClose",
+		mysql.ComStmtSendLongData: "StmtSendLongData",
+		mysql.ComStmtReset:        "StmtReset",
+		mysql.ComSetOption:        "SetOption",
 	}
-	queryTotalCountErr = [...]prometheus.Counter{
-		mysql.ComSleep:            metrics.QueryTotalCounter.WithLabelValues("Sleep", "Error"),
-		mysql.ComQuit:             metrics.QueryTotalCounter.WithLabelValues("Quit", "Error"),
-		mysql.ComInitDB:           metrics.QueryTotalCounter.WithLabelValues("InitDB", "Error"),
-		mysql.ComQuery:            metrics.QueryTotalCounter.WithLabelValues("Query", "Error"),
-		mysql.ComPing:             metrics.QueryTotalCounter.WithLabelValues("Ping", "Error"),
-		mysql.ComFieldList:        metrics.QueryTotalCounter.WithLabelValues("FieldList", "Error"),
-		mysql.ComStmtPrepare:      metrics.QueryTotalCounter.WithLabelValues("StmtPrepare", "Error"),
-		mysql.ComStmtExecute:      metrics.QueryTotalCounter.WithLabelValues("StmtExecute", "Error"),
-		mysql.ComStmtFetch:        metrics.QueryTotalCounter.WithLabelValues("StmtFetch", "Error"),
-		mysql.ComStmtClose:        metrics.QueryTotalCounter.WithLabelValues("StmtClose", "Error"),
-		mysql.ComStmtSendLongData: metrics.QueryTotalCounter.WithLabelValues("StmtSendLongData", "Error"),
-		mysql.ComStmtReset:        metrics.QueryTotalCounter.WithLabelValues("StmtReset", "Error"),
-		mysql.ComSetOption:        metrics.QueryTotalCounter.WithLabelValues("SetOption", "Error"),
-	}
+)
+
+const (
+	mysqlComOK    = "OK"
+	mysqlComError = "Error"
 )
 
 // clientConn represents a connection between server and client, it maintains connection specific state,
@@ -183,7 +173,6 @@ func (cc *clientConn) Run(ctx context.Context) {
 				logutil.Logger(ctx).Error("result undetermined, close this connection", zap.Error(err))
 				return
 			} else if terror.ErrCritical.Equal(err) {
-				metrics.CriticalErrorCounter.Add(1)
 				logutil.Logger(ctx).Fatal("critical error, stop the server", zap.Error(err))
 			}
 			var txnMode string
@@ -287,7 +276,7 @@ func (cc *clientConn) Close() error {
 }
 
 func closeConn(cc *clientConn, connections int) error {
-	metrics.ConnGauge.Set(float64(connections))
+	metrics.ConnGauge.WithLabelValues().Set(float64(connections))
 	err := cc.bufReadConn.Close()
 	terror.Log(err)
 	if cc.ctx != nil {
@@ -326,20 +315,20 @@ func (cc *clientConn) String() string {
 
 // TODO(eastfisher): implement this function
 func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
-	var counter prometheus.Counter
-	if err != nil && int(cmd) < len(queryTotalCountErr) {
-		counter = queryTotalCountErr[cmd]
-	} else if err == nil && int(cmd) < len(queryTotalCountOk) {
-		counter = queryTotalCountOk[cmd]
+	getQueryTotalCounter(cmd, err).Inc()
+}
+
+func getQueryTotalCounter(cmd byte, err error) prometheus.Counter {
+	var comTypeStr string
+	if int(cmd) < len(mysqlComMapping) {
+		comTypeStr = mysqlComMapping[cmd]
 	}
-	if counter != nil {
-		counter.Inc()
-	} else {
-		label := strconv.Itoa(int(cmd))
-		if err != nil {
-			metrics.QueryTotalCounter.WithLabelValues(label, "ERROR").Inc()
-		} else {
-			metrics.QueryTotalCounter.WithLabelValues(label, "OK").Inc()
-		}
+	if comTypeStr == "" {
+		comTypeStr = strconv.Itoa(int(cmd))
 	}
+	var comRespStr string = mysqlComOK
+	if err != nil {
+		comRespStr = mysqlComError
+	}
+	return metrics.QueryTotalCounter.WithLabelValues(comTypeStr, comRespStr)
 }
