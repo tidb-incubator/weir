@@ -4,8 +4,13 @@ const (
 	MIN_SESSION_TIMEOUT = 600
 )
 
+const (
+	DefaultClusterName = "default"
+)
+
 type Proxy struct {
 	Version      string       `yaml:"version"`
+	Cluster      string       `yaml:"cluster"`
 	ProxyServer  ProxyServer  `yaml:"proxy_server"`
 	AdminServer  AdminServer  `yaml:"admin_server"`
 	Log          Log          `yaml:"log"`

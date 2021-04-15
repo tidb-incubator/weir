@@ -1,6 +1,8 @@
 package metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 const (
 	ModuleWeirProxy = "weirproxy"
@@ -40,26 +42,37 @@ func RetLabel(err error) string {
 	return opFailed
 }
 
-func RegisterProxyMetrics() {
+func RegisterProxyMetrics(cluster string) {
+	curryingLabelsWithLblCluster := map[string]string{LblCluster: cluster}
+
+	PanicCounter = PanicCounter.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(PanicCounter)
+	QueryTotalCounter = QueryTotalCounter.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(QueryTotalCounter)
+	ExecuteErrorCounter = ExecuteErrorCounter.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(ExecuteErrorCounter)
-	prometheus.MustRegister(CriticalErrorCounter)
+	ConnGauge = ConnGauge.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(ConnGauge)
-	prometheus.MustRegister(ServerEventCounter)
-	prometheus.MustRegister(GetTokenDurationHistogram)
-	prometheus.MustRegister(HandShakeErrorCounter)
 
 	// query ctx metrics
+	QueryCtxQueryCounter = QueryCtxQueryCounter.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(QueryCtxQueryCounter)
+	QueryCtxQueryDeniedCounter = QueryCtxQueryDeniedCounter.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(QueryCtxQueryDeniedCounter)
+	QueryCtxQueryDurationHistogram = QueryCtxQueryDurationHistogram.MustCurryWith(curryingLabelsWithLblCluster).(*prometheus.HistogramVec)
 	prometheus.MustRegister(QueryCtxQueryDurationHistogram)
+	QueryCtxGauge = QueryCtxGauge.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(QueryCtxGauge)
+	QueryCtxAttachedConnGauge = QueryCtxAttachedConnGauge.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(QueryCtxAttachedConnGauge)
+	QueryCtxTransactionDuration = QueryCtxTransactionDuration.MustCurryWith(curryingLabelsWithLblCluster).(*prometheus.HistogramVec)
 	prometheus.MustRegister(QueryCtxTransactionDuration)
 
 	// backend metrics
+	BackendEventCounter = BackendEventCounter.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(BackendEventCounter)
+	BackendQueryCounter = BackendQueryCounter.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(BackendQueryCounter)
+	BackendConnInUseGauge = BackendConnInUseGauge.MustCurryWith(curryingLabelsWithLblCluster)
 	prometheus.MustRegister(BackendConnInUseGauge)
 }

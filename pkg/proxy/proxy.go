@@ -6,6 +6,7 @@ import (
 	"github.com/pingcap-incubator/weir/pkg/config"
 	"github.com/pingcap-incubator/weir/pkg/configcenter"
 	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
+	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
 	"github.com/pingcap-incubator/weir/pkg/proxy/namespace"
 	"github.com/pingcap-incubator/weir/pkg/proxy/server"
 )
@@ -22,6 +23,9 @@ func supplementProxyConfig(cfg *config.Proxy) *config.Proxy {
 	if cfg.ProxyServer.SessionTimeout <= config.MIN_SESSION_TIMEOUT {
 		cfg.ProxyServer.SessionTimeout = config.MIN_SESSION_TIMEOUT
 	}
+	if cfg.Cluster == "" {
+		cfg.Cluster = config.DefaultClusterName
+	}
 	return cfg
 }
 
@@ -32,6 +36,7 @@ func NewProxy(cfg *config.Proxy) *Proxy {
 }
 
 func (p *Proxy) Init() error {
+	metrics.RegisterProxyMetrics(p.cfg.Cluster)
 	cc, err := configcenter.CreateConfigCenter(p.cfg.ConfigCenter)
 	if err != nil {
 		return err

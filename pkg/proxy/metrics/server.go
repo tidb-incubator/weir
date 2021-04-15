@@ -16,7 +16,7 @@ var (
 			Subsystem: LabelServer,
 			Name:      "panic_total",
 			Help:      "Counter of panic.",
-		}, []string{LblType})
+		}, []string{LblCluster, LblType})
 
 	QueryTotalCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -24,7 +24,7 @@ var (
 			Subsystem: LabelServer,
 			Name:      "query_total",
 			Help:      "Counter of queries.",
-		}, []string{LblType, LblResult})
+		}, []string{LblCluster, LblType, LblResult})
 
 	ExecuteErrorCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -32,54 +32,21 @@ var (
 			Subsystem: LabelServer,
 			Name:      "execute_error_total",
 			Help:      "Counter of execute errors.",
-		}, []string{LblType})
+		}, []string{LblCluster, LblType})
 
-	CriticalErrorCounter = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Namespace: ModuleWeirProxy,
-			Subsystem: LabelServer,
-			Name:      "critical_error_total",
-			Help:      "Counter of critical errors.",
-		})
-
-	ConnGauge = prometheus.NewGauge(
+	ConnGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: ModuleWeirProxy,
 			Subsystem: LabelServer,
 			Name:      "connections",
 			Help:      "Number of connections.",
-		})
+		}, []string{LblCluster})
 
 	EventStart        = "start"
 	EventGracefulDown = "graceful_shutdown"
 	// Eventkill occurs when the server.Kill() function is called.
-	EventKill          = "kill"
-	EventClose         = "close"
-	ServerEventCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: ModuleWeirProxy,
-			Subsystem: LabelServer,
-			Name:      "event_total",
-			Help:      "Counter of weirproxy-server event.",
-		}, []string{LblType})
-
-	GetTokenDurationHistogram = prometheus.NewHistogram(
-		prometheus.HistogramOpts{
-			Namespace: ModuleWeirProxy,
-			Subsystem: LabelServer,
-			Name:      "get_token_duration_seconds",
-			Help:      "Duration (us) for getting token, it should be small until concurrency limit is reached.",
-			Buckets:   prometheus.ExponentialBuckets(1, 2, 30), // 1us ~ 528s
-		})
-
-	HandShakeErrorCounter = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Namespace: ModuleWeirProxy,
-			Subsystem: LabelServer,
-			Name:      "handshake_error_total",
-			Help:      "Counter of hand shake error.",
-		},
-	)
+	EventKill  = "kill"
+	EventClose = "close"
 )
 
 // ExecuteErrorToLabel converts an execute error to label.
