@@ -2,6 +2,8 @@ package errors
 
 import (
 	"reflect"
+
+	gomysql "github.com/siddontang/go-mysql/mysql"
 )
 
 // copied from errors.Is(), but replace Unwrap() with Cause()
@@ -23,6 +25,21 @@ func Is(err, target error) bool {
 		// APIs, thereby making it easier to get away with them.
 		if err = Cause(err); err == nil {
 			return false
+		}
+	}
+}
+
+func CheckAndGetMyError(err error) (*gomysql.MyError, bool) {
+	if err == nil {
+		return nil, false
+	}
+
+	for {
+		if err1, ok := err.(*gomysql.MyError); ok {
+			return err1, true
+		}
+		if err = Cause(err); err == nil {
+			return nil, false
 		}
 	}
 }
