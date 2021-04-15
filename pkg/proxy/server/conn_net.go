@@ -114,6 +114,19 @@ func (cc *clientConn) writeError(e error) error {
 		}
 	}
 
+	return cc.writeSQLError(m)
+}
+
+func (cc *clientConn) writeMyError(myErr *gomysql.MyError) error {
+	m := &mysql.SQLError{
+		Code:    myErr.Code,
+		Message: myErr.Message,
+		State:   myErr.State,
+	}
+	return cc.writeSQLError(m)
+}
+
+func (cc *clientConn) writeSQLError(m *mysql.SQLError) error {
 	cc.lastCode = m.Code
 	data := cc.alloc.AllocWithLen(4, 16+len(m.Message))
 	data = append(data, mysql.ErrHeader)

@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
+	utilerrors "github.com/pingcap-incubator/weir/pkg/util/errors"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
@@ -189,16 +190,30 @@ func (cc *clientConn) Run(ctx context.Context) {
 			if cc.ctx != nil {
 				txnMode = cc.ctx.GetSessionVars().GetReadableTxnMode()
 			}
-			logutil.Logger(ctx).Error("command dispatched failed",
-				zap.String("connInfo", cc.String()),
-				zap.String("command", mysql.Command2Str[data[0]]),
-				zap.String("status", cc.SessionStatusToString()),
-				zap.Stringer("sql", getLastStmtInConn{cc}),
-				zap.String("txn_mode", txnMode),
-				zap.String("err", errStrForLog(err)),
-			)
-			err1 := cc.writeError(err)
-			terror.Log(err1)
+			myErr, isMyErr := utilerrors.CheckAndGetMyError(err)
+			if isMyErr {
+				logutil.Logger(ctx).Warn("command dispatched failed (sql error)",
+					zap.String("connInfo", cc.String()),
+					zap.String("command", mysql.Command2Str[data[0]]),
+					zap.String("status", cc.SessionStatusToString()),
+					zap.Stringer("sql", getLastStmtInConn{cc}),
+					zap.String("txn_mode", txnMode),
+					zap.String("err", errStrForLog(err)),
+				)
+				err1 := cc.writeMyError(myErr)
+				terror.Log(err1)
+			} else {
+				logutil.Logger(ctx).Error("command dispatched failed (unknown error)",
+					zap.String("connInfo", cc.String()),
+					zap.String("command", mysql.Command2Str[data[0]]),
+					zap.String("status", cc.SessionStatusToString()),
+					zap.Stringer("sql", getLastStmtInConn{cc}),
+					zap.String("txn_mode", txnMode),
+					zap.String("err", errStrForLog(err)),
+				)
+				err1 := cc.writeError(err)
+				terror.Log(err1)
+			}
 		}
 		cc.addMetrics(data[0], startTime, err)
 		cc.pkt.sequence = 0
