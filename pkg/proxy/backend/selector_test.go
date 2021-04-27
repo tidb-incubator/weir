@@ -1,10 +1,10 @@
 package backend
 
 import (
-	"math/rand"
 	"strconv"
 	"testing"
 
+	"github.com/pingcap-incubator/weir/pkg/util/rand2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ func (*testSource) Seed(seed int64) {
 
 func TestRandomSelector_Select_Success(t *testing.T) {
 	source := &testSource{}
-	rd := rand.New(source)
+	rd := rand2.New(source)
 	selector := NewRandomSelector(rd)
 
 	host := "127.0.0.1"
@@ -38,7 +38,7 @@ func TestRandomSelector_Select_Success(t *testing.T) {
 
 func TestRandomSelector_Select_ErrNoInstanceToSelect(t *testing.T) {
 	source := &testSource{}
-	rd := rand.New(source)
+	rd := rand2.New(source)
 	selector := NewRandomSelector(rd)
 
 	host := "127.0.0.1"
