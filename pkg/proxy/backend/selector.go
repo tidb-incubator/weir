@@ -4,6 +4,8 @@ import (
 	"errors"
 	"math/rand"
 	"time"
+
+	"github.com/pingcap-incubator/weir/pkg/util/rand2"
 )
 
 const (
@@ -34,21 +36,21 @@ type Selector interface {
 }
 
 type RandomSelector struct {
-	rd *rand.Rand
+	rd *rand2.Rand
 }
 
 func CreateSelector(selectorType int) (Selector, error) {
 	switch selectorType {
 	case SelectorTypeRandom:
 		source := rand.NewSource(time.Now().Unix())
-		rd := rand.New(source)
+		rd := rand2.New(source)
 		return NewRandomSelector(rd), nil
 	default:
 		return nil, ErrInvalidSelectorType
 	}
 }
 
-func NewRandomSelector(rd *rand.Rand) *RandomSelector {
+func NewRandomSelector(rd *rand2.Rand) *RandomSelector {
 	return &RandomSelector{
 		rd: rd,
 	}
