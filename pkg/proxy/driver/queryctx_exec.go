@@ -26,7 +26,7 @@ func (q *QueryCtxImpl) isStmtAllowed(ctx context.Context, sqlDigest uint32) bool
 
 func (q *QueryCtxImpl) getBreakerName(ctx context.Context, sql string, breaker Breaker) (string, bool) {
 	switch breaker.GetBreakerScope() {
-	case "namesapce":
+	case "namespace":
 		return q.ns.Name(), true
 	case "db":
 		return q.currentDB, true
