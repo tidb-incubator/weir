@@ -11,7 +11,6 @@ require (
 	github.com/pingcap/failpoint v0.0.0-20200702092429-9f69995143ce
 	github.com/pingcap/parser v0.0.0-20200803072748-fdf66528323d
 	github.com/pingcap/tidb v1.1.0-beta.0.20200826081922-9c1c21270001
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.1
 	github.com/siddontang/go v0.0.0-20180604090527-bdc77568d726
 	github.com/siddontang/go-mysql v1.1.0
