@@ -110,7 +110,7 @@ func (s *Server) initCapability() {
 	}
 }
 
-// TODO(eastfisher): support unix socket and proxyprotocol
+// TODO(eastfisher): support unix socket and proxy protocol
 func (s *Server) initListener() error {
 	listener, err := net.Listen("tcp", s.cfg.ProxyServer.Addr)
 	if err != nil {
