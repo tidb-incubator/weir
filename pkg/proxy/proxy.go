@@ -3,12 +3,12 @@ package proxy
 import (
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/config"
-	"github.com/pingcap-incubator/weir/pkg/configcenter"
-	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
-	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
-	"github.com/pingcap-incubator/weir/pkg/proxy/namespace"
-	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	"github.com/tidb-incubator/weir/pkg/config"
+	"github.com/tidb-incubator/weir/pkg/configcenter"
+	"github.com/tidb-incubator/weir/pkg/proxy/driver"
+	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
+	"github.com/tidb-incubator/weir/pkg/proxy/namespace"
+	"github.com/tidb-incubator/weir/pkg/proxy/server"
 )
 
 type Proxy struct {

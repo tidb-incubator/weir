@@ -9,8 +9,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/pingcap-incubator/weir/pkg/config"
-	"github.com/pingcap-incubator/weir/pkg/proxy"
+	"github.com/tidb-incubator/weir/pkg/config"
+	"github.com/tidb-incubator/weir/pkg/proxy"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
 )

@@ -3,7 +3,7 @@ package namespace
 import (
 	"context"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
+	"github.com/tidb-incubator/weir/pkg/proxy/driver"
 )
 
 type Namespace interface {

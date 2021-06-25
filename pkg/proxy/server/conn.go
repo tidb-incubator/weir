@@ -25,8 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
-	utilerrors "github.com/pingcap-incubator/weir/pkg/util/errors"
+	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
+	utilerrors "github.com/tidb-incubator/weir/pkg/util/errors"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
