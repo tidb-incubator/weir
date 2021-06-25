@@ -5,8 +5,8 @@ import (
 	"database/sql/driver"
 	"sync"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
-	utilerrors "github.com/pingcap-incubator/weir/pkg/util/errors"
+	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
+	utilerrors "github.com/tidb-incubator/weir/pkg/util/errors"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"

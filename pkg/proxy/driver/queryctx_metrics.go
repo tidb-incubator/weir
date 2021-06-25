@@ -3,8 +3,8 @@ package driver
 import (
 	"context"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
-	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
+	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
+	wast "github.com/tidb-incubator/weir/pkg/util/ast"
 	"github.com/pingcap/parser/ast"
 )
 

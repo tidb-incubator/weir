@@ -5,8 +5,8 @@ import (
 	"hash/crc32"
 	"strings"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
-	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
+	"github.com/tidb-incubator/weir/pkg/proxy/constant"
+	wast "github.com/tidb-incubator/weir/pkg/util/ast"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"

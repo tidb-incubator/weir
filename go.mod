@@ -1,4 +1,4 @@
-module github.com/pingcap-incubator/weir
+module github.com/tidb-incubator/weir
 
 go 1.14
 

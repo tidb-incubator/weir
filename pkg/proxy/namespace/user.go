@@ -3,7 +3,7 @@ package namespace
 import (
 	"fmt"
 
-	"github.com/pingcap-incubator/weir/pkg/config"
+	"github.com/tidb-incubator/weir/pkg/config"
 	"github.com/pingcap/errors"
 )
 

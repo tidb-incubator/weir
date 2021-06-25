@@ -2,7 +2,7 @@ package rate_limit
 
 import (
 	"errors"
-	. "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker"
+	. "github.com/tidb-incubator/weir/pkg/util/rate_limit_breaker"
 	"sync"
 	"sync/atomic"
 )

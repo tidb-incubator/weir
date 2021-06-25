@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/pingcap-incubator/weir/pkg/config"
-	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
-	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
+	"github.com/tidb-incubator/weir/pkg/config"
+	"github.com/tidb-incubator/weir/pkg/proxy/driver"
+	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
 	"github.com/pingcap/errors"
 )
 

@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/backend/client"
-	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
-	"github.com/pingcap-incubator/weir/pkg/proxy/metrics"
-	"github.com/pingcap-incubator/weir/pkg/util/sync2"
+	"github.com/tidb-incubator/weir/pkg/proxy/backend/client"
+	"github.com/tidb-incubator/weir/pkg/proxy/driver"
+	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
+	"github.com/tidb-incubator/weir/pkg/util/sync2"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
 )

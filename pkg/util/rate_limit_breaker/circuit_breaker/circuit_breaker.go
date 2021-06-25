@@ -3,7 +3,7 @@ package circuit_breaker
 import (
 	"context"
 	"errors"
-	. "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker"
+	. "github.com/tidb-incubator/weir/pkg/util/rate_limit_breaker"
 	"sync"
 )
 

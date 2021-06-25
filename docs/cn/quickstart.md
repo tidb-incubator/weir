@@ -50,7 +50,7 @@ INSERT INTO `test_weir_admin` (name) VALUES ('Huang');
 首先, 从github克隆代码仓库到本地.
 
 ```
-$ git clone https://github.com/pingcap-incubator/weir
+$ git clone https://github.com/tidb-incubator/weir
 ```
 
 构建weir-proxy.

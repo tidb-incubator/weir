@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/constant"
+	"github.com/tidb-incubator/weir/pkg/proxy/constant"
 	"github.com/pingcap/errors"
 	. "github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/packet"

@@ -3,7 +3,7 @@ package namespace
 import (
 	"bytes"
 
-	"github.com/pingcap-incubator/weir/pkg/util/passwd"
+	"github.com/tidb-incubator/weir/pkg/util/passwd"
 )
 
 type SQLInfo struct {

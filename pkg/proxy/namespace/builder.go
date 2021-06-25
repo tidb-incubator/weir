@@ -4,11 +4,11 @@ import (
 	"hash/crc32"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/config"
-	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
-	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
-	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
-	"github.com/pingcap-incubator/weir/pkg/util/datastructure"
+	"github.com/tidb-incubator/weir/pkg/config"
+	"github.com/tidb-incubator/weir/pkg/proxy/backend"
+	"github.com/tidb-incubator/weir/pkg/proxy/driver"
+	wast "github.com/tidb-incubator/weir/pkg/util/ast"
+	"github.com/tidb-incubator/weir/pkg/util/datastructure"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser"
 )
