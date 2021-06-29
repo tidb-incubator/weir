@@ -1,7 +1,7 @@
 package configcenter
 
 import (
-	"github.com/pingcap-incubator/weir/pkg/config"
+	"github.com/tidb-incubator/weir/pkg/config"
 	"github.com/pingcap/errors"
 )
 

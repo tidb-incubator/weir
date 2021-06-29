@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/util/sync2"
+	"github.com/tidb-incubator/weir/pkg/util/sync2"
 )
 
 // Out-of-band messages

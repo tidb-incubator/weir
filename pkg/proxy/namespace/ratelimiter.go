@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker/rate_limit"
+	"github.com/tidb-incubator/weir/pkg/util/rate_limit_breaker/rate_limit"
 )
 
 type NamespaceRateLimiter struct {

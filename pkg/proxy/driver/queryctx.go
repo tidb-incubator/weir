@@ -6,9 +6,9 @@ import (
 	"hash/crc32"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/server"
-	wast "github.com/pingcap-incubator/weir/pkg/util/ast"
-	cb "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker/circuit_breaker"
+	"github.com/tidb-incubator/weir/pkg/proxy/server"
+	wast "github.com/tidb-incubator/weir/pkg/util/ast"
+	cb "github.com/tidb-incubator/weir/pkg/util/rate_limit_breaker/circuit_breaker"
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/auth"

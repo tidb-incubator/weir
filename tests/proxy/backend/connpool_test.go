@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/backend"
+	"github.com/tidb-incubator/weir/pkg/proxy/backend"
 	"github.com/stretchr/testify/require"
 )
 

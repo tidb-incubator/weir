@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/pingcap-incubator/weir/pkg/util/rand2"
+	"github.com/tidb-incubator/weir/pkg/util/rand2"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -24,8 +24,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/util/sync2"
-	"github.com/pingcap-incubator/weir/pkg/util/timer"
+	"github.com/tidb-incubator/weir/pkg/util/sync2"
+	"github.com/tidb-incubator/weir/pkg/util/timer"
 	"golang.org/x/net/context"
 )
 

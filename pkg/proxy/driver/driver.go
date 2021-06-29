@@ -3,7 +3,7 @@ package driver
 import (
 	"crypto/tls"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	"github.com/tidb-incubator/weir/pkg/proxy/server"
 )
 
 type DriverImpl struct {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/server"
+	"github.com/tidb-incubator/weir/pkg/proxy/server"
 	"github.com/pingcap/tidb/types"
 	"github.com/pingcap/tidb/util/chunk"
 	"github.com/pingcap/tidb/util/hack"

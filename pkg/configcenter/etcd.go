@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/config"
+	"github.com/tidb-incubator/weir/pkg/config"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.etcd.io/etcd/clientv3"

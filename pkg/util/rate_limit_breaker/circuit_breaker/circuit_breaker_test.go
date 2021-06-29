@@ -3,7 +3,7 @@ package circuit_breaker
 import (
 	"context"
 	"errors"
-	rateLimitBreaker "github.com/pingcap-incubator/weir/pkg/util/rate_limit_breaker"
+	rateLimitBreaker "github.com/tidb-incubator/weir/pkg/util/rate_limit_breaker"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

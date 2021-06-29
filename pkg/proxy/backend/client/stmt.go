@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/pingcap-incubator/weir/pkg/proxy/driver"
+	"github.com/tidb-incubator/weir/pkg/proxy/driver"
 	"github.com/pingcap/errors"
 	. "github.com/siddontang/go-mysql/mysql"
 )

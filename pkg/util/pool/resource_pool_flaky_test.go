@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap-incubator/weir/pkg/util/sync2"
+	"github.com/tidb-incubator/weir/pkg/util/sync2"
 	"golang.org/x/net/context"
 )
 
