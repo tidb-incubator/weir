@@ -2,32 +2,33 @@
 
 本文介绍如何快速上手体验Weir平台.
 
+## 前提
 
+使用 weir-proxy 的前提首先要部署一套TiDB集群。对 weir-proxy 来说, 后端数据库也可使用 MySQL 代替 TiDB 进行测试.
 
-## 安装TiDB
+### 安装 TiDB/MySQL
 
-目前Weir平台的代理层中间件weir-proxy已开源, 中控组件weir-controller和控制台weir-dashboard还未开源.
+安装 TiDB 可参考 [TiDB数据库快速上手指南](https://docs.pingcap.com/zh/tidb/stable/quick-start-with-tidb) 进行安装。
 
-首先部署一套TiDB集群, 可参考 [TiDB数据库快速上手指南](https://docs.pingcap.com/zh/tidb/stable/quick-start-with-tidb) 进行安装. 对weir-proxy来说, 后端数据库也可使用MySQL代替TiDB进行测试.
-
-
+### 构造数据
 
 安装完成后, 需要连接TiDB / MySQL 执行以下SQL语句进行建库和建表操作, 方便测试weir-proxy.
 
+#### 建库
 ```
 DROP DATABASE IF EXISTS `test_weir_db`;
 CREATE DATABASE `test_weir_db`;
 USE `test_weir_db`;
+```
 
+#### 建表
+```
 CREATE TABLE `test_weir_user` (
   `id` bigint(22) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE `uniq_name` (`name`)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
-INSERT INTO `test_weir_user` (name) VALUES ('Bob');
-INSERT INTO `test_weir_user` (name) VALUES ('Alice');
 
 CREATE TABLE `test_weir_admin` (
   `id` bigint(22) unsigned NOT NULL AUTO_INCREMENT,
@@ -36,16 +37,22 @@ CREATE TABLE `test_weir_admin` (
   PRIMARY KEY (`id`),
   UNIQUE `uniq_name` (`name`)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+```
+
+#### 写入测试数据
+```
+INSERT INTO `test_weir_user` (name) VALUES ('Bob');
+INSERT INTO `test_weir_user` (name) VALUES ('Alice');
 
 INSERT INTO `test_weir_admin` (name) VALUES ('Ed');
 INSERT INTO `test_weir_admin` (name) VALUES ('Huang');
 ```
 
+目前Weir平台的代理层中间件weir-proxy已开源, 中控组件weir-controller和控制台weir-dashboard还未开源.
 
+## 安装启动 weir-proxy
 
-## 启动weir-proxy
-
-目前可使用源码编译安装weir-proxy进行测试.
+### 从源码编译安装
 
 首先, 从github克隆代码仓库到本地.
 
@@ -91,4 +98,3 @@ mysql>
 ```
 
 如果看到连接成功, 说明weir-proxy已经启动并可以使用了. 恭喜你!
-
