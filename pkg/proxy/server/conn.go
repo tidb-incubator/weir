@@ -25,8 +25,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
-	utilerrors "github.com/tidb-incubator/weir/pkg/util/errors"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/parser/terror"
@@ -34,6 +32,8 @@ import (
 	"github.com/pingcap/tidb/util/arena"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
+	utilerrors "github.com/tidb-incubator/weir/pkg/util/errors"
 	"go.uber.org/zap"
 )
 

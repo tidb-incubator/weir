@@ -3,11 +3,11 @@ package namespace
 import (
 	"sync"
 
+	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb/util/logutil"
 	"github.com/tidb-incubator/weir/pkg/config"
 	"github.com/tidb-incubator/weir/pkg/proxy/driver"
 	"github.com/tidb-incubator/weir/pkg/util/sync2"
-	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
 )
 

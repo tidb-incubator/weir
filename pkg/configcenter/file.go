@@ -1,8 +1,8 @@
 package configcenter
 
 import (
-	"github.com/tidb-incubator/weir/pkg/config"
 	"github.com/pingcap/errors"
+	"github.com/tidb-incubator/weir/pkg/config"
 	"io/ioutil"
 	"path"
 	"path/filepath"

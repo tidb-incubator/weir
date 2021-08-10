@@ -1,10 +1,10 @@
 # 连接管理
 
-作为TiDB的应用层代理中间件, Weir Proxy的一项重要职责就是管理客户端的连接与后端TiDB Server集群的连接. Weir Proxy使用连接池机制, 客户端连接可以复用数据库连接执行SQL请求.
+作为 TiDB 的应用层代理中间件, Weir Proxy 的一项重要职责就是管理客户端的连接与后端 TiDB Server 集群的连接. Weir Proxy 使用连接池机制, 客户端连接可以复用数据库连接执行SQL请求.
 
 ## 后端连接池
 
-Weir Proxy会为每个租户的TiDB Server集群中的每个实例创建一个连接池, 连接池的配置参数是租户级别的, 其最大连接数是确定的. 客户端在向Weir Proxy发起SQL查询请求时, Weir Proxy会首先根据集群负载均衡策略选出一个后端实例, 从该后端实例的连接池中取出一个连接, 根据客户端连接当前状态初始化连接后, 执行SQL查询语句, 查询完成后再放回连接池中.
+Weir Proxy 会为每个租户(namespace)的 TiDB Server 集群中的每个实例创建一个连接池, 连接池的配置参数是租户级别的, 其最大连接数是确定的. 客户端在向 Weir Proxy 发起 SQL 查询请求时, Weir Proxy 会首先根据集群负载均衡策略选出一个后端实例, 从该后端实例的连接池中取出一个连接, 根据客户端连接当前状态初始化连接后, 执行 SQL 查询语句, 查询完成后再放回连接池中.
 
 <img src="assets/backend-conn-pool.png" style="zoom:80%;" />
 
