@@ -33,9 +33,9 @@
 #### Response
 - Body
 ```
-	{
-        "code":200,
-	    "msg":"success"
+{
+    "code":200,
+	"msg":"success"
     }
 ```
 
@@ -58,10 +58,10 @@
 #### Response
 - Body
 ```
-	{
-        "code":200,
-	    "msg":"success"
-    }
+{
+    "code":200,
+	"msg":"success"
+}
 ```
 
 #### 错误码

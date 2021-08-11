@@ -48,8 +48,6 @@ INSERT INTO `test_weir_admin` (name) VALUES ('Ed');
 INSERT INTO `test_weir_admin` (name) VALUES ('Huang');
 ```
 
-目前Weir平台的代理层中间件weir-proxy已开源, 中控组件weir-controller和控制台weir-dashboard还未开源.
-
 ## 安装启动 weir-proxy
 
 ### 从源码编译安装
@@ -98,3 +96,5 @@ mysql>
 ```
 
 如果看到连接成功, 说明weir-proxy已经启动并可以使用了. 恭喜你!
+
+目前 Weir 平台的代理层中间件 weir-proxy 已开源, 中控组件 weir-controller 和控制台 weir-dashboard 还未开源.
