@@ -10,10 +10,10 @@
 #### Response
 - Body
 ```
-	{
-        "code":200,
-	    "msg":"success"
-    }
+{
+    "code":200,
+    "msg":"success"
+}
 ```
 
 #### 错误码
@@ -35,8 +35,8 @@
 ```
 {
     "code":200,
-	"msg":"success"
-    }
+    "msg":"success"
+}
 ```
 
 #### 错误码
@@ -60,7 +60,7 @@
 ```
 {
     "code":200,
-	"msg":"success"
+    "msg":"success"
 }
 ```
 

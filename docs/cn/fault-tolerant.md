@@ -32,7 +32,23 @@ strategies:
 | namespace | 租户级别熔断，熔断触发时所有对此租户进行熔断 |
 | db | 库级别熔断, 熔断触发时所有对此库的 sql 进行熔断 |
 | table | 表级别熔断, 熔断触发时所有对此表的 sql 进行熔断 |
-| sql | sql 级别熔断, 对每一个特征 sql 做监控管理，颗粒度最细，熔断触发时对这一类 sql 进行熔断  |
+| sql | sql 级别熔断, 对每一个特征 sql 做监控管理，颗粒度最细，熔断触发时对这一类 sql 进行熔断 |
+
+sql 熔断在内存中的输入 eg :
+
+```
+select * from test_table where id = 2;
+select * from test_table where in (1,2,3);
+```
+在熔断器中将被转化成:
+
+```
+select * from test_table where id = ?;
+select * from test_table where in (?);
+```
+
+这里我们在 ast 解析时通过判断 ast 的 node 类型进行了值的替换, 并重写了 sql 进行输出, 这样就可以确定一类 sql 并提取他们的摘要方便我们后续使用, 如下图:
+<img src="docs/cn/assets/ast.png" style="zoom:50%;" />
 
 熔断器计数采用的是滑动窗口计数器，滑动窗口有实现简单，能应对周期比较长的统计
 <img src="docs/cn/assets/sliding_window.png" style="zoom:80%;" />
