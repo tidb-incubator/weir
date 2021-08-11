@@ -17,5 +17,6 @@ Weir是伴鱼公司研发的开源数据库代理平台, 主要为TiDB分布式�
 - [集群部署](docs/cn/cluster_deployment.md)
 - [配置热加载](docs/cn/config-dynamic-reload.md)
 - [监控与告警](docs/cn/monitoring.md)
+- [RESTful-Api](docs/cn/RESTful_api.md)
 
 ## FAQ
