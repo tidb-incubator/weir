@@ -13,7 +13,6 @@ type FrontendNamespace struct {
 	AllowedDBs   []string           `yaml:"allowed_dbs"`
 	SlowSQLTime  int                `yaml:"slow_sql_time"`
 	DeniedIPs    []string           `yaml:"denied_ips"`
-	IdleTimeout  int                `yaml:"idle_timeout"`
 	Users        []FrontendUserInfo `yaml:"users"`
 	SQLBlackList []SQLInfo          `yaml:"sql_blacklist"`
 	SQLWhiteList []SQLInfo          `yaml:"sql_whitelist"`

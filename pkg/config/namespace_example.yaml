@@ -6,7 +6,6 @@ frontend:
   slow_sql_time: 50
   denied_sqls:
   denied_ips:
-  idle_timeout: 3600
   users:
     - username: "hello"
       password: "world"

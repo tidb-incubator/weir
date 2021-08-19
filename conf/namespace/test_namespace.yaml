@@ -11,7 +11,6 @@ frontend:
     - sql: "select * from tbl2"
     - sql: "select * from tbl3"
   denied_ips:
-  idle_timeout: 3600
   users:
     - username: "hello"
       password: "world"
