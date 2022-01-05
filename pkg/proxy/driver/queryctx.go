@@ -114,7 +114,7 @@ func (q *QueryCtxImpl) Execute(ctx context.Context, sql string) (*gomysql.Result
 	tableName := wast.ExtractFirstTableNameFromStmt(stmt)
 	ctx = wast.CtxWithAstTableName(ctx, tableName)
 
-	sqlParadigm, err := q.extractSqlParadigm(ctx, sql)
+	sqlParadigm, err := extractStmtParadigm(stmt)
 	if err != nil {
 		return nil, err
 	}

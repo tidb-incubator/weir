@@ -5,14 +5,14 @@ import (
 	"hash/crc32"
 	"strings"
 
-	"github.com/tidb-incubator/weir/pkg/proxy/constant"
-	wast "github.com/tidb-incubator/weir/pkg/util/ast"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/util/logutil"
 	gomysql "github.com/siddontang/go-mysql/mysql"
+	"github.com/tidb-incubator/weir/pkg/proxy/constant"
+	wast "github.com/tidb-incubator/weir/pkg/util/ast"
 	"go.uber.org/zap"
 )
 
@@ -60,17 +60,21 @@ func (q *QueryCtxImpl) getRateLimiterKey(ctx context.Context, rateLimiter RateLi
 	}
 }
 
+func extractStmtParadigm(stmt ast.StmtNode) (string, error) {
+	visitor, err := wast.ExtractAstVisit(stmt)
+	if err != nil {
+		return "", err
+	}
+	return visitor.SqlFeature(), nil
+}
+
 func (q *QueryCtxImpl) extractSqlParadigm(ctx context.Context, sql string) (string, error) {
 	charsetInfo, collation := q.sessionVars.GetCharsetInfo()
 	featureStmt, err := q.parser.ParseOneStmt(sql, charsetInfo, collation)
 	if err != nil {
 		return "", err
 	}
-	visitor, err := wast.ExtractAstVisit(featureStmt)
-	if err != nil {
-		return "", err
-	}
-	return visitor.SqlFeature(), nil
+	return extractStmtParadigm(featureStmt)
 }
 
 func (q *QueryCtxImpl) executeStmt(ctx context.Context, sql string, stmtNode ast.StmtNode) (*gomysql.Result, error) {
