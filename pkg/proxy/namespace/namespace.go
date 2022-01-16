@@ -3,12 +3,10 @@ package namespace
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
-
+	"github.com/pingcap/errors"
 	"github.com/tidb-incubator/weir/pkg/config"
 	"github.com/tidb-incubator/weir/pkg/proxy/driver"
 	"github.com/tidb-incubator/weir/pkg/proxy/metrics"
-	"github.com/pingcap/errors"
 )
 
 type NamespaceHolder struct {
@@ -18,7 +16,6 @@ type NamespaceHolder struct {
 type NamespaceWrapper struct {
 	nsmgr       *NamespaceManager
 	name        string
-	connCounter int64
 }
 
 func CreateNamespaceHolder(cfgs []*config.Namespace, build NamespaceBuilder) (*NamespaceHolder, error) {
@@ -86,13 +83,11 @@ func (n *NamespaceWrapper) GetPooledConn(ctx context.Context) (driver.PooledBack
 }
 
 func (n *NamespaceWrapper) IncrConnCount() {
-	currCnt := atomic.AddInt64(&n.connCounter, 1)
-	metrics.QueryCtxGauge.WithLabelValues(n.name).Set(float64(currCnt))
+	metrics.QueryCtxGauge.WithLabelValues(n.name).Inc()
 }
 
 func (n *NamespaceWrapper) DescConnCount() {
-	currCnt := atomic.AddInt64(&n.connCounter, -1)
-	metrics.QueryCtxGauge.WithLabelValues(n.name).Set(float64(currCnt))
+	metrics.QueryCtxGauge.WithLabelValues(n.name).Dec()
 }
 
 func (n *NamespaceWrapper) Closed() bool {
