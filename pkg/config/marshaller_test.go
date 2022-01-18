@@ -13,7 +13,6 @@ var testNamespaceConfig = Namespace{
 		AllowedDBs:  []string{"db0", "db1"},
 		SlowSQLTime: 10,
 		DeniedIPs:   []string{"127.0.0.0", "128.0.0.0"},
-		IdleTimeout: 10,
 		Users: []FrontendUserInfo{
 			{Username: "user0", Password: "pwd0"},
 			{Username: "user1", Password: "pwd1"},
